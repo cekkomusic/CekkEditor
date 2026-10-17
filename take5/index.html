@@ -110,6 +110,7 @@ select,input[type=text]{background:var(--rail);color:var(--legend);border:1px so
   .sec{flex-basis:100%}
   .panel:not(:has(.show)){display:none}
 }
+body.embedded .topbar{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -437,6 +438,14 @@ function updateFxLabels(){
 function loadDefaults(){P.forEach(p=>setVal(p,p.d,{quiet:true,force:true}))}
 
 /* ============ MIDI ============ */
+// Dentro CekkEditor (iframe) usa le porte scelte nella app; da solo usa la propria barra MIDI.
+const HOST=(()=>{try{return window.parent!==window&&window.parent.CekkMIDI||null}catch(e){return null}})();
+function bindHost(){
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
+  const p=HOST.ports("take5");S.access=HOST.access;S.in=p.in;S.out=p.out;S.ch=p.ch;$("#selCh").value=p.ch;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
+  if(S.in&&S.out)log(`Porte dalla app: IN «${S.in.name}» · OUT «${S.out.name}» · canale ${S.ch+1}`);
+}
 async function connect(){
   if(!navigator.requestMIDIAccess){toast("Questo browser non supporta Web MIDI. Usa Chrome o Edge (anche Chrome su Android).");return}
   try{S.access=await navigator.requestMIDIAccess({sysex:true});log("Accesso MIDI con SysEx concesso.")}
@@ -453,10 +462,10 @@ function fillPorts(){
   si.value=pick(ins,keepI);so.value=pick(outs,keepO);bindPorts();
 }
 function bindPorts(){
-  if(S.in)S.in.onmidimessage=null;
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
   S.in=S.access&&$("#selIn").value?S.access.inputs.get($("#selIn").value):null;
   S.out=S.access&&$("#selOut").value?S.access.outputs.get($("#selOut").value):null;
-  if(S.in)S.in.onmidimessage=onMidi;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
   const ok=!!(S.in&&S.out);
   $("#dotLink").classList.toggle("on",ok);
   $("#txtLink").textContent=ok?S.out.name:"Scegli ingresso e uscita";
@@ -654,6 +663,8 @@ function init(){
   $("#btnClear").onclick=()=>{if(!S.lib.length)return;confirmBox(`Eliminare tutti i ${S.lib.length} suoni della libreria da questo browser?`,()=>{S.lib=[];saveLib();renderLib()})};
   $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
+  if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
+    if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
   log("Editor pronto. Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }

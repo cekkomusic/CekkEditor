@@ -2,25 +2,292 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Synth Editors</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CekkEditor</title>
+<meta name="theme-color" content="#0d0e10">
+<meta name="description" content="Editor e librarian MIDI per i synth di studio">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-:root{--bg:#0d0e10;--panel:#16171a;--line:#34373d;--fg:#e9e6df;--dim:#8d9098;--led:#ff8a2a;color-scheme:dark}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:"Arial Narrow",Arial,sans-serif;padding:24px 16px}
-main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-h1{letter-spacing:.14em;text-transform:uppercase;font-size:24px;margin:0 0 8px}
-a,.off{display:block;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;color:var(--fg);text-decoration:none;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
-a:hover{border-color:var(--led)}
-small{display:block;color:var(--dim);font-size:13px;text-transform:none;letter-spacing:0;margin-top:4px}
-.off{opacity:.5}
+/* App: barra in alto, impostazioni MIDI richiudibili, carosello orizzontale dei synth; l'editor scelto si apre a tutto schermo in un iframe che usa le porte MIDI della app. */
+:root{
+  --bg:#0d0e10; --panel:#16171a; --panel2:#1e2024; --line:#34373d;
+  --fg:#e9e6df; --dim:#8d9098; --led:#ff8a2a; --ok:#5fd38a; --danger:#ff5a4f;
+  --f-panel:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-panel);font-size:15px}
+body{min-height:100dvh;padding:0 0 calc(24px + env(safe-area-inset-bottom,0px))}
+button,select{font-family:var(--f-panel);font-size:14px}
+button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:7px 12px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+button:hover{border-color:var(--dim)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--led);outline-offset:2px}
+button.primary{background:var(--led);color:#1a0f05;border-color:var(--led)}
+button:disabled{opacity:.45;cursor:not-allowed}
+select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px;width:100%;min-width:0}
+.dot{width:9px;height:9px;border-radius:50%;background:#4a3526;flex:0 0 auto}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+/* barra */
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:rgba(13,14,16,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+.brand{font-weight:700;font-size:22px;letter-spacing:.14em;text-transform:uppercase;margin-right:auto;display:flex;align-items:center;gap:8px}
+.brand svg{width:26px;height:26px}
+.status{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+#btnInstall[hidden]{display:none}
+
+main{max-width:1100px;margin:0 auto;padding:14px 16px 0;display:flex;flex-direction:column;gap:16px}
+
+/* impostazioni MIDI */
+.midi{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.midi summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px}
+.midi summary::-webkit-details-marker{display:none}
+.midi summary h2{margin:0;font-size:15px;letter-spacing:.2em;text-transform:uppercase;margin-right:auto}
+.midi summary .sum{font-family:var(--f-mono);font-size:12px;color:var(--dim);text-align:right}
+.midi summary::after{content:"▾";color:var(--dim);transition:transform .15s}
+.midi[open] summary::after{transform:rotate(180deg)}
+.midi .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
+.hint{margin:0;color:var(--dim);font-size:13px;line-height:1.4;font-family:system-ui,sans-serif;max-width:70ch}
+.assign{display:grid;grid-template-columns:minmax(110px,.8fr) minmax(0,1fr) minmax(0,1fr) 70px;gap:6px 8px;align-items:center}
+.assign .h{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.assign .nm{font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* carosello */
+.pick h2{margin:0 0 10px;font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 16px;padding:4px 16px 10px;margin:0 -16px;scrollbar-width:none;overscroll-behavior-x:contain}
+.carousel::-webkit-scrollbar{display:none}
+.card{--accent:var(--led);flex:0 0 min(84vw,420px);scroll-snap-align:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.card .art{aspect-ratio:16/8;background:#0a0b0c;border-bottom:1px solid var(--line);display:block}
+.card .art svg{display:block;width:100%;height:100%}
+.card .info{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .mk{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.card h3{margin:0;font-size:26px;letter-spacing:.08em;text-transform:uppercase;line-height:1}
+.card .ds{color:var(--dim);font-size:14px}
+.card .row{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px}
+.card .port{font-family:var(--f-mono);font-size:11px;color:var(--dim);margin-right:auto;display:flex;align-items:center;gap:6px;min-width:0}
+.card .port span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card button.open{background:var(--accent);border-color:var(--accent);color:#111}
+.card.soon h3{color:var(--dim)}
+.nav{display:flex;align-items:center;justify-content:center;gap:10px}
+.dots{display:flex;gap:8px}
+.dots button{width:10px;height:10px;padding:0;border-radius:50%;background:var(--line);border:0}
+.dots button[aria-current=true]{background:var(--led)}
+.nav .arr{padding:4px 10px}
+
+/* editor a tutto schermo */
+.editor{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column}
+.editor[hidden]{display:none}
+.ebar{display:flex;align-items:center;gap:10px;padding:calc(6px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+.ebar b{font-size:18px;letter-spacing:.12em;text-transform:uppercase;margin-right:auto}
+.editor iframe{flex:1;width:100%;border:0;background:var(--bg)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--led);padding:8px 14px;border-radius:6px;font-family:system-ui,sans-serif;font-size:13px;z-index:20;max-width:90vw}
+
+@media (max-width:640px){
+  .assign{grid-template-columns:1fr 1fr 64px}
+  .assign .h{display:none}
+  .assign .nm{grid-column:1/-1;margin-top:6px}
+  .status #txtLink{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
+<header class="bar">
+  <div class="brand"><svg viewBox="0 0 50 50" aria-hidden="true"><circle cx="25" cy="25" r="16" fill="#2a2c31" stroke="#0a0a0b" stroke-width="1.5"/><path d="M11.1 38.9A20 20 0 1 1 38.9 38.9" fill="none" stroke="#34373d" stroke-width="4" stroke-linecap="round"/><path d="M11.1 38.9A20 20 0 0 1 25 5" fill="none" stroke="#ff8a2a" stroke-width="4" stroke-linecap="round"/><line x1="25" y1="25" x2="25" y2="13" stroke="#f4f1ea" stroke-width="3" stroke-linecap="round"/></svg>CekkEditor</div>
+  <button id="btnInstall" hidden>Installa</button>
+  <div class="status"><span class="dot" id="dotLink"></span><span id="txtLink">MIDI spento</span></div>
+</header>
+
 <main>
-  <h1>Synth Editors</h1>
-  <a href="take5/">Take 5<small>Editor e librarian via USB MIDI</small></a>
-  <div class="off">microKORG XL<small>In preparazione</small></div>
-  <div class="off">Little Phatty<small>In preparazione</small></div>
+  <details class="midi" id="midiBox" open>
+    <summary><h2>Connessione MIDI</h2><span class="sum" id="midiSum">Non collegato</span></summary>
+    <div class="body">
+      <p class="hint">Collega i synth via USB (sul telefono con cavo OTG), premi «Collega MIDI» e consenti l'accesso ai dispositivi MIDI. Per ogni synth scegli porte e canale: di solito l'app le trova da sola.</p>
+      <div class="tools">
+        <button id="btnConnect" class="primary">Collega MIDI</button>
+        <button id="btnRescan">Aggiorna dispositivi</button>
+      </div>
+      <div class="assign" id="assign"></div>
+    </div>
+  </details>
+
+  <section class="pick" aria-label="Scelta del synth">
+    <h2>Scegli il synth</h2>
+    <div class="carousel" id="car"></div>
+    <div class="nav">
+      <button class="arr" id="prev" aria-label="Synth precedente">‹</button>
+      <div class="dots" id="dots"></div>
+      <button class="arr" id="next" aria-label="Synth successivo">›</button>
+    </div>
+  </section>
 </main>
+
+<div class="editor" id="editor" hidden>
+  <div class="ebar"><button id="btnBack">‹ Synth</button><b id="edName"></b><span class="status"><span class="dot" id="edDot"></span></span></div>
+  <iframe id="frame" title="Editor" allow="midi"></iframe>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ============ SYNTH DISPONIBILI ============ */
+// art: aspetto provvisorio della scheda (da rifinire con le foto degli strumenti)
+const SYNTHS=[
+ {id:"take5",name:"Take 5",maker:"Sequential",desc:"Polifonico analogico a 5 voci · 44 tasti",url:"take5/",ready:true,
+  mIn:/take\s*5|sequential|dsi/i,mOut:/take\s*5|sequential|dsi/i,
+  art:{panel:"#17181b",accent:"#ff8a2a",knobs:[9,9],screen:true,white:26}},
+ {id:"mkxl",name:"microKORG XL",maker:"Korg",desc:"Synth e vocoder · 37 mini tasti",url:null,ready:false,
+  mIn:/microkorg.*(kbd|knob)|microkorg/i,mOut:/microkorg.*sound|microkorg/i,
+  art:{panel:"#202326",accent:"#4fb3ff",knobs:[5,3],screen:true,white:22,mini:true}},
+ {id:"phatty",name:"Little Phatty",maker:"Moog",desc:"Monofonico analogico · 37 tasti",url:null,ready:false,
+  mIn:/phatty|moog/i,mOut:/phatty|moog/i,
+  art:{panel:"#141414",accent:"#e9c46a",knobs:[6,1],screen:false,white:22,big:true}},
+];
+
+/* ============ MIDI CONDIVISO (usato anche dagli editor nell'iframe) ============ */
+const LS="cekk-midi-assign-v1";
+const $=s=>document.querySelector(s);
+const el=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a){if(x==="class")e.className=a[x];else if(x.startsWith("on"))e.addEventListener(x.slice(2),a[x]);else e.setAttribute(x,a[x])}k.flat().forEach(c=>c!=null&&e.append(c));return e};
+let assign={};try{assign=JSON.parse(localStorage.getItem(LS)||"{}")}catch(e){}
+const listeners=new Set();
+
+window.CekkMIDI={
+  access:null,sysex:false,
+  // porte e canale assegnati a un synth
+  ports(id){const a=assign[id]||{},m=this.access;return {in:m&&a.in?m.inputs.get(a.in)||null:null,out:m&&a.out?m.outputs.get(a.out)||null:null,ch:a.ch||0}},
+  // l'editor si registra per sapere quando cambiano porte o assegnazioni
+  on(fn){listeners.add(fn);return ()=>listeners.delete(fn)},
+  connect,
+};
+function notify(){for(const fn of [...listeners]){try{fn()}catch(e){listeners.delete(fn)}}}
+function saveAssign(){try{localStorage.setItem(LS,JSON.stringify(assign))}catch(e){}}
+
+async function connect(){
+  if(!navigator.requestMIDIAccess){toast("Questo browser non supporta Web MIDI. Usa Chrome o Edge (anche Chrome su Android).");return false}
+  try{CekkMIDI.access=await navigator.requestMIDIAccess({sysex:true});CekkMIDI.sysex=true}
+  catch(e){try{CekkMIDI.access=await navigator.requestMIDIAccess();CekkMIDI.sysex=false;toast("Permesso SysEx negato: lettura e salvataggio suoni non disponibili.")}catch(e2){toast("Accesso MIDI negato dal browser.");return false}}
+  CekkMIDI.access.addEventListener("statechange",refresh);
+  refresh();return true;
+}
+// trova la porta: prima per id salvato, poi per nome salvato, poi per nome tipico del synth
+function resolve(list,id,name,re){return (id&&list.find(p=>p.id===id))||(name&&list.find(p=>p.name===name))||list.find(p=>re.test(p.name))||null}
+function refresh(){
+  const m=CekkMIDI.access;if(!m)return;
+  const ins=[...m.inputs.values()],outs=[...m.outputs.values()];
+  for(const s of SYNTHS){
+    const a=assign[s.id]||(assign[s.id]={ch:0});
+    const pi=a.manualIn&&!a.in?null:resolve(ins,a.in,a.inName,s.mIn);
+    const po=a.manualOut&&!a.out?null:resolve(outs,a.out,a.outName,s.mOut);
+    a.in=pi?pi.id:"";a.out=po?po.id:"";
+    if(pi)a.inName=pi.name;if(po)a.outName=po.name;
+  }
+  saveAssign();renderAssign();renderStatus();notify();
+}
+
+/* ============ INTERFACCIA ============ */
+function renderAssign(){
+  const box=$("#assign");box.innerHTML="";
+  const m=CekkMIDI.access;
+  if(!m){box.append(el("p",{class:"hint",style:"grid-column:1/-1"},"Premi «Collega MIDI» per vedere i dispositivi."));return}
+  const ins=[...m.inputs.values()],outs=[...m.outputs.values()];
+  box.append(el("div",{class:"h"},"Synth"),el("div",{class:"h"},"Ingresso (dal synth)"),el("div",{class:"h"},"Uscita (al synth)"),el("div",{class:"h"},"Canale"));
+  for(const s of SYNTHS){
+    const a=assign[s.id];
+    const si=el("select",{"aria-label":`${s.name}: ingresso`});si.append(el("option",{value:""},"— nessuno —"));ins.forEach(p=>si.append(el("option",{value:p.id},p.name)));si.value=a.in;
+    const so=el("select",{"aria-label":`${s.name}: uscita`});so.append(el("option",{value:""},"— nessuna —"));outs.forEach(p=>so.append(el("option",{value:p.id},p.name)));so.value=a.out;
+    const sc=el("select",{"aria-label":`${s.name}: canale`});for(let i=0;i<16;i++)sc.append(el("option",{value:i},String(i+1)));sc.value=a.ch||0;
+    si.onchange=()=>{const p=m.inputs.get(si.value);a.in=si.value;a.inName=p?p.name:"";a.manualIn=!si.value;saveAssign();renderStatus();notify()};
+    so.onchange=()=>{const p=m.outputs.get(so.value);a.out=so.value;a.outName=p?p.name:"";a.manualOut=!so.value;saveAssign();renderStatus();notify()};
+    sc.onchange=()=>{a.ch=+sc.value;saveAssign();notify()};
+    box.append(el("div",{class:"nm"},el("span",{class:"dot"+(a.in&&a.out?" on":"")}),s.name),si,so,sc);
+  }
+}
+function renderStatus(){
+  const m=CekkMIDI.access;
+  const ok=SYNTHS.filter(s=>{const a=assign[s.id];return a&&a.in&&a.out});
+  $("#dotLink").classList.toggle("on",!!m&&ok.length>0);
+  $("#txtLink").textContent=!m?"MIDI spento":ok.length?ok.map(s=>s.name).join(" · "):"Nessun synth trovato";
+  $("#midiSum").textContent=!m?"Non collegato":`${m.inputs.size} ${m.inputs.size===1?"ingresso":"ingressi"} · ${m.outputs.size} ${m.outputs.size===1?"uscita":"uscite"}${CekkMIDI.sysex?"":" · senza SysEx"}`;
+  document.querySelectorAll(".card").forEach(c=>{
+    const a=assign[c.dataset.id]||{},on=!!(m&&a.in&&a.out);
+    c.querySelector(".port .dot").classList.toggle("on",on);
+    c.querySelector(".port span:last-child").textContent=!m?"MIDI non collegato":on?a.outName:"Synth non trovato";
+  });
+  const cur=$("#editor").dataset.id;if(cur){const a=assign[cur]||{};$("#edDot").classList.toggle("on",!!(m&&a.in&&a.out))}
+}
+
+function panelArt(s){
+  // pannello stilizzato: manopole, display e tastiera. Niente loghi.
+  const A=s.art,W=320,H=160,kb=A.mini?44:52,top=H-kb;
+  let g=`<rect width="${W}" height="${H}" fill="${A.panel}"/><rect x="0" y="0" width="${W}" height="3" fill="${A.accent}" opacity=".85"/>`;
+  let x0=A.screen?92:18;
+  if(A.screen)g+=`<rect x="16" y="20" width="62" height="28" rx="3" fill="#0f1a14" stroke="#050806"/><rect x="22" y="28" width="38" height="4" fill="#9ff0b4" opacity=".7"/><rect x="22" y="36" width="24" height="3" fill="#9ff0b4" opacity=".4"/>`;
+  A.knobs.forEach((n,r)=>{const sp=(W-x0-14)/n,rad=Math.min(A.big?13:9,sp/2-3),y=24+r*(top-30)/Math.max(1,A.knobs.length)+(A.knobs.length===1?(top-48)/2:0);
+    for(let i=0;i<n;i++){const cx=x0+sp*i+sp/2;const ang=-130+((i*37+r*53)%260);const rr=ang*Math.PI/180;
+      g+=`<circle cx="${cx}" cy="${y+rad}" r="${rad}" fill="#2a2c31" stroke="#050505"/><line x1="${cx}" y1="${y+rad}" x2="${(cx+Math.sin(rr)*rad*.8).toFixed(1)}" y2="${(y+rad-Math.cos(rr)*rad*.8).toFixed(1)}" stroke="${i%3===0?A.accent:"#e9e6df"}" stroke-width="1.6" stroke-linecap="round"/>`}});
+  const kw=(W-16)/A.white;g+=`<rect x="6" y="${top}" width="${W-12}" height="${kb-6}" fill="#0b0b0b"/>`;
+  for(let i=0;i<A.white;i++)g+=`<rect x="${(8+i*kw).toFixed(1)}" y="${top+2}" width="${(kw-1.2).toFixed(1)}" height="${kb-10}" rx="1" fill="#e8e5dc"/>`;
+  for(let i=0;i<A.white-1;i++){const n=i%7;if(n===2||n===6)continue;g+=`<rect x="${(8+(i+1)*kw-kw*.3).toFixed(1)}" y="${top+2}" width="${(kw*.6).toFixed(1)}" height="${(kb-10)*.6}" fill="#111"/>`}
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`;
+}
+function buildCarousel(){
+  const car=$("#car"),dots=$("#dots");
+  SYNTHS.forEach((s,i)=>{
+    const art=el("div",{class:"art"});art.innerHTML=panelArt(s);
+    const btn=el("button",{class:s.ready?"open":"",type:"button",onclick:()=>openEditor(s)},s.ready?"Apri editor":"In preparazione");
+    if(!s.ready)btn.disabled=true;
+    const card=el("article",{class:"card"+(s.ready?"":" soon"),"data-id":s.id,style:`--accent:${s.art.accent}`,"aria-label":s.name},art,
+      el("div",{class:"info"},el("div",{class:"mk"},s.maker),el("h3",{},s.name),el("div",{class:"ds"},s.desc),
+        el("div",{class:"row"},el("div",{class:"port"},el("span",{class:"dot"}),el("span",{},"MIDI non collegato")),btn)));
+    car.append(card);
+    dots.append(el("button",{type:"button","aria-label":s.name,onclick:()=>goTo(i)}));
+  });
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.intersectionRatio>.6){const i=[...car.children].indexOf(e.target);dots.querySelectorAll("button").forEach((b,j)=>b.setAttribute("aria-current",i===j?"true":"false"));car.dataset.cur=i}}),{root:car,threshold:[.6]});
+  [...car.children].forEach(c=>io.observe(c));
+  $("#prev").onclick=()=>goTo(Math.max(0,(+car.dataset.cur||0)-1));
+  $("#next").onclick=()=>goTo(Math.min(SYNTHS.length-1,(+car.dataset.cur||0)+1));
+  car.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){e.preventDefault();$("#next").click()}if(e.key==="ArrowLeft"){e.preventDefault();$("#prev").click()}});
+}
+function goTo(i){const c=$("#car").children[i];if(c)c.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"})}
+
+/* ============ EDITOR ============ */
+function openEditor(s,push=true){
+  const ed=$("#editor"),f=$("#frame");
+  ed.dataset.id=s.id;$("#edName").textContent=s.name;
+  if(f.dataset.src!==s.url){f.src=s.url;f.dataset.src=s.url}
+  ed.hidden=false;document.body.style.overflow="hidden";renderStatus();
+  if(push)history.pushState({ed:s.id},"","#"+s.id);
+  try{localStorage.setItem("cekk-last",s.id)}catch(e){}
+}
+function closeEditor(){const ed=$("#editor");ed.hidden=true;delete ed.dataset.id;document.body.style.overflow=""}
+$("#btnBack").onclick=()=>{if(history.state&&history.state.ed)history.back();else closeEditor()};
+addEventListener("popstate",e=>{const id=e.state&&e.state.ed;const s=SYNTHS.find(x=>x.id===id);if(s&&s.ready)openEditor(s,false);else closeEditor()});
+
+/* ============ UTILITÀ E AVVIO ============ */
+let toastT=0;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3500)}
+
+let installEv=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;$("#btnInstall").hidden=false});
+$("#btnInstall").onclick=async()=>{if(!installEv)return;installEv.prompt();await installEv.userChoice;installEv=null;$("#btnInstall").hidden=true};
+addEventListener("appinstalled",()=>{$("#btnInstall").hidden=true;toast("CekkEditor installato")});
+
+async function init(){
+  buildCarousel();renderAssign();renderStatus();
+  $("#btnConnect").onclick=async()=>{if(await connect()){$("#btnConnect").textContent="Ricollega";toast("MIDI collegato")}};
+  $("#btnRescan").onclick=()=>{if(CekkMIDI.access)refresh();else connect()};
+  // se il permesso è già stato dato, collega subito e chiudi le impostazioni
+  try{const st=await navigator.permissions.query({name:"midi",sysex:true});if(st.state==="granted"&&await connect()){$("#btnConnect").textContent="Ricollega";if(SYNTHS.some(s=>assign[s.id]&&assign[s.id].in&&assign[s.id].out))$("#midiBox").open=false}}catch(e){}
+  const last=localStorage.getItem("cekk-last");const li=SYNTHS.findIndex(s=>s.id===last);if(li>0)requestAnimationFrame(()=>{$("#car").children[li].scrollIntoView({inline:"center",block:"nearest"})});
+  const h=location.hash.slice(1);const hs=SYNTHS.find(s=>s.id===h&&s.ready);
+  if(hs){history.replaceState(null,"",location.pathname);openEditor(hs)}
+  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+init();
+</script>
 </body>
 </html>

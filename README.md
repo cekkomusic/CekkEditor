@@ -1,13 +1,15 @@
 # CekkEditor
 
-Editor e librarian MIDI nel browser (Web MIDI API con SysEx) per:
+App per telefono e PC con editor e librarian MIDI (Web MIDI API con SysEx) per i synth di studio.
 
-| Strumento | Stato | Percorso |
+**Apri:** https://cekkomusic.github.io/CekkEditor/
+
+Su Android, in Chrome: menu ⋮ → «Installa app» (o il pulsante «Installa» in alto) per averla nella schermata Home come un'app.
+
+| Synth | Stato | Editor |
 |---|---|---|
 | Sequential Take 5 | prima versione | [`take5/`](take5/index.html) |
 | Korg microKORG XL | da fare | — |
 | Moog Little Phatty | da fare | — |
 
-Ogni editor è un singolo file HTML autosufficiente, senza build. Funziona in Chrome/Edge su PC e in Chrome su Android (synth collegato con cavo OTG). La Web MIDI richiede HTTPS: pubblica il repository con **GitHub Pages** (Settings → Pages → Deploy from branch).
-
-Contesto tecnico e punti aperti: [`CLAUDE.md`](CLAUDE.md). Manuali: [`docs/manuali.md`](docs/manuali.md).
+Nessuna build: HTML, CSS e JavaScript scritti a mano. Contesto tecnico e punti aperti: [`CLAUDE.md`](CLAUDE.md). Manuali: [`docs/manuali.md`](docs/manuali.md).

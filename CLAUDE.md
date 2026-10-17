@@ -14,10 +14,18 @@ Ogni editor deve:
 - funzionare su PC (Chrome/Edge) e su Android (Chrome, synth collegato con cavo OTG).
 
 ## Scelte tecniche
-- Un file HTML autosufficiente per strumento (HTML + CSS + JS inline, niente build).
+- **App unica «CekkEditor»** (`index.html` nella radice), installabile sul telefono come PWA (`manifest.webmanifest`, `sw.js`, `icons/`).
+  All'apertura: impostazioni MIDI (porte e canale per ogni synth, trovate da sole per nome) e carosello orizzontale dei synth.
+  L'editor scelto si apre a tutto schermo in un iframe.
+- La app espone `window.CekkMIDI` (`access`, `sysex`, `ports(id)`, `on(fn)`): l'editor nell'iframe usa quelle porte invece di chiedere il MIDI da sé.
+  Ogni editor resta un file HTML autosufficiente (HTML + CSS + JS inline, niente build) che funziona anche aperto da solo (`take5/`).
+  Per aggiungere un synth: voce in `SYNTHS` dentro `index.html` (`ready:true`, `url`), cartella con il suo `index.html`, URL in `CORE` di `sw.js`.
+- In ascolto con `addEventListener("midimessage")` + `open()`, non `onmidimessage`, perché le porte sono condivise.
 - `navigator.requestMIDIAccess({sysex:true})`, con ripiego senza SysEx (solo parametri).
-- Pubblicazione su **GitHub Pages**: serve HTTPS per la Web MIDI e rende facile l'uso da Android.
+- Pubblicazione su **GitHub Pages** dal ramo `ccr-650e1c9a-a8zli2`, cartella radice: https://cekkomusic.github.io/CekkEditor/
+- Service worker «prima la rete»: gli aggiornamenti arrivano subito; la cache serve solo senza connessione. Cambiare `CACHE` in `sw.js` se cambia l'elenco `CORE`.
 - Interfaccia in italiano. Layout a schede sotto gli 820 px.
+- Grafica: ogni editor richiama il proprio synth (colori, manopole, disposizione), **senza loghi o marchi**. In attesa delle foto degli strumenti, le schede del carosello (`panelArt` in `index.html`) sono provvisorie.
 - Conferma dentro la pagina prima di qualunque scrittura nella memoria dello strumento.
 
 ## Take 5 — dati chiave (da "Take 5 MIDI Implementation 1.2" e User's Guide 2.x)
