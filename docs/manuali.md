@@ -8,4 +8,4 @@
 - Manuale: https://cdn.inmusicbrands.com/Moog/LittlePhatty/Little_Phatty_Manual.pdf
 
 ## Korg microKORG XL
-- (da aggiungere)
+- Manuale (Google Drive): https://drive.google.com/file/d/1SznfQYJDKvtaaqJddm5txHxUYo91KIuv/view

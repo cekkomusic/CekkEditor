@@ -108,6 +108,7 @@ select,input[type=text]{background:var(--rail);color:var(--legend);border:1px so
   .panel [data-tab]:not(.show),.lower>[data-tab]:not(.show){display:none}
   .lower>.card.show{display:block}
   .sec{flex-basis:100%}
+  .panel:not(:has(.show)){display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -297,10 +298,11 @@ const P=[
 // matrice di modulazione: 16 slot
 for(let i=0;i<16;i++){
   P.push({n:77+i, l:"Src "+(i+1), t:"m",max:19,d:0,sec:"mod",slot:i,part:"src"});
-  P.push({n:93+i, l:"Amt "+(i+1), t:"m",max:255,d:127,sec:"mod",slot:i,part:"amt",c:127});
+  P.push({n:93+i, l:"Amt "+(i+1), t:"m",max:255,d:127,sec:"mod",slot:i,part:"amt",c:127,f:bip(127)});
   P.push({n:109+i,l:"Dst "+(i+1), t:"m",max:54,d:0,sec:"mod",slot:i,part:"dst"});
 }
-P.forEach(p=>{p.min=p.min||0;if(p.t==="s"){p.max=1;p.d=p.d||0}if(p.d==null)p.d=p.min});
+P.forEach(p=>{p.min=p.min||0;if(p.t==="s"){p.max=1;p.d=p.d||0}if(p.d==null)p.d=p.min;
+  const opts=p.o||(p.part==="src"?MOD_SRC:p.part==="dst"?MOD_DST:null);p.hi=opts?Math.max(p.max,opts.length-1):p.max});
 const byN=new Map(P.map(p=>[p.n,p]));
 
 function shapeName(v){return v<20?"sine":v<56?"sine→saw":v<72?"saw":v<90?"saw→pulse":"pulse "+(v-89)}
@@ -415,7 +417,7 @@ function fmt(p,v){return p.f?p.f(v):String(v)}
 
 /* ============ VALORI ============ */
 function setVal(p,v,{send=false,quiet=false,force=false}={}){
-  v=Math.max(p.min,Math.min(p.max,Math.round(v)));
+  v=Math.max(p.min,Math.min(p.hi,Math.round(v)));
   if(S.vals[p.n]===v&&!force){return}
   S.vals[p.n]=v;
   const u=ui.get(p.n);if(u)u.render(v);
@@ -504,7 +506,7 @@ function receivedPatch(packed,bank,prog,kind){
 function guessName(u){
   // cerca la prima sequenza di 4-20 caratteri stampabili
   let best="",cur="";
-  for(let i=0;i<u.length;i++){const c=u[i];if(c>=32&&c<127){cur+=String.fromCharCode(c)}else{if(cur.trim().length>=4&&/[A-Za-z]/.test(cur)&&cur.length<=24){best=cur.trim();break}cur=""}}
+  for(let i=0;i<=u.length;i++){const c=i<u.length?u[i]:0;if(c>=32&&c<127){cur+=String.fromCharCode(c)}else{if(cur.trim().length>=4&&/[A-Za-z]/.test(cur)&&cur.length<=24){best=cur.trim();break}cur=""}}
   return best;
 }
 function applyDump(u){
@@ -516,7 +518,7 @@ function applyDump(u){
     if(p.n===29)v=u[29]|(u[30]<<8);
     else if(p.max>255)continue;
     else v=u[p.n];
-    if(v<p.min||v>p.max){bad++;continue}
+    if(v<p.min||v>p.hi){bad++;continue}
     nv[p.n]=v;ok++;
   }
   if(bad>4){log(`Mappatura dump→pannello NON coerente (${bad} valori fuori scala): il pannello non è stato aggiornato. Usa il Laboratorio per individuare i byte giusti.`);$("#lcdInfo").textContent+=" · valori non letti";return}
@@ -549,7 +551,7 @@ function renderLib(){
         el("button",{type:"button",title:"Carica nel buffer di modifica del synth (non sovrascrive la memoria)",onclick:()=>auditionLib(x)},"Ascolta"),
         el("button",{type:"button",title:"Scrivi nella posizione scelta in alto (Banco/Programma)",onclick:()=>askWrite(x)},"Scrivi"),
         el("button",{type:"button",onclick:()=>renameLib(x)},"Rinomina"),
-        el("button",{type:"button",onclick:()=>download(progMsg(x.packed,x.bank??0,x.prog??0),safe(x.name)+".syx")},".syx"),
+        el("button",{type:"button",onclick:()=>download(x.bank!=null?progMsg(x.packed,x.bank,x.prog):editMsg(x.packed),safe(x.name)+".syx")},".syx"),
         el("button",{type:"button",title:"Sposta su",onclick:()=>{if(i>0){[S.lib[i-1],S.lib[i]]=[S.lib[i],S.lib[i-1]];saveLib();renderLib()}}},"↑"),
         el("button",{type:"button",class:"danger",onclick:()=>{S.lib.splice(i,1);saveLib();renderLib()}},"✕"))));
   });
@@ -596,14 +598,14 @@ function sendBank(){
 }
 function parseSyxFile(bytes){
   const out=[];let i=0;
-  while(i<bytes.length){if(bytes[i]!==0xF0){i++;continue}let j=i+1;while(j<bytes.length&&bytes[j]!==0xF7)j++;out.push(bytes.slice(i,j+1));i=j+1}
+  while(i<bytes.length){if(bytes[i]!==0xF0){i++;continue}let j=i+1;while(j<bytes.length&&bytes[j]!==0xF7&&bytes[j]!==0xF0)j++;if(bytes[j]===0xF7)out.push(bytes.slice(i,j+1));i=bytes[j]===0xF7?j+1:j}
   return out;
 }
 async function importFiles(files){
   let n=0;
   for(const f of files){
     const bytes=new Uint8Array(await f.arrayBuffer());
-    if(f.name.endsWith(".json")){try{const r=JSON.parse(new TextDecoder().decode(bytes));r.forEach(x=>S.lib.push({...x,packed:unb64(x.packed)}));n+=r.length;saveLib();renderLib()}catch(e){toast("Backup non valido.")}continue}
+    if(/\.json$/i.test(f.name)){try{const r=JSON.parse(new TextDecoder().decode(bytes)).filter(x=>x&&typeof x.packed==="string");r.forEach(x=>S.lib.push({...x,packed:unb64(x.packed)}));n+=r.length;saveLib();renderLib()}catch(e){toast("Backup non valido.")}continue}
     const msgs=parseSyxFile(bytes);let k=0;
     for(const m of msgs){
       if(m[1]!==1||m[2]!==0x35)continue;
