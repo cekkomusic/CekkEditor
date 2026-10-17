@@ -5,6 +5,7 @@
 - User's Guide 2.3: https://sequential.com/wp-content/uploads/2026/01/Take-5-Users-Guide-v2_3.pdf
 
 ## Moog Little Phatty
+- Stage II User's Manual nel repository: [`Little_Phatty_StageII_Manual.pdf`](Little_Phatty_StageII_Manual.pdf) (SysEx p. 41-43, tabella CC p. 54-57, MIDI Chart p. 68)
 - Manuale: https://cdn.inmusicbrands.com/Moog/LittlePhatty/Little_Phatty_Manual.pdf
 
 ## Korg microKORG XL

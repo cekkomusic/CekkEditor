@@ -79,5 +79,27 @@ Ogni editor deve:
 - Due timbri: in MULTI il Timbre 2 usa il canale «T2MIDI.CH»; il resto viaggia sul canale globale.
 - Porte USB: «KBD/KNOB» (uscita dal synth) e «SOUND» (ingresso al generatore). MIDI «ROUTING» deve includere USB.
 
+## Little Phatty — dati chiave (da `docs/Little_Phatty_StageII_Manual.pdf`, Stage II, MIDI Chart v2.2 del 2009)
+- Stage II: MIDI su DIN e **USB**. In MASTER → MIDI SETUP: ingresso e uscita DIN/USB (predefinito DIN/USB), canali In/Out separati (predefinito 1), Local Control, MIDI Merge.
+- **Parametri solo via CC a 7 bit** (nessun NRPN, nessun Parameter Change SysEx). Cutoff e Mod Wheel a 14 bit: Cutoff CC19 MSB + CC51 LSB, Mod Wheel CC1 + CC33.
+  Il synth trasmette i CC quando si muovono le manopole e quando si cambiano i parametri nei menu → il pannello si aggiorna da solo.
+- Tabella CC (p. 55-56): Glide on/off CC65 (0/64); LFO Rate CC3; Mod Amount CC6; Mod Source CC68 (0 Tri,16 Sq,32 Saw,48 Ramp,64 Filt Env,80 Osc2);
+  Mod Dest CC69 (0 Pitch,16 Filt,32 Wave,48 Osc2); LFO Sync CC102 (0 Int,64 MIDI); LFO Clock Div CC103; Mod Src 5 CC104 (0 Filt,64 S&H);
+  Mod Src 6 CC105 (0 Osc2,64 Noise); Mod Dest 2 CC106 (0 Off,25 Pitch,50 Filt,75 Wave,100 Osc2);
+  Osc1 Octave CC74 (0 16',32 8',48 4',64 2'); Osc1 Wave CC9; Osc1 Level CC15; Glide Rate CC5; Sync CC77 (0/64); Osc2 Octave CC75; Osc2 Freq CC10;
+  Osc2 Wave CC11; Osc2 Level CC16; Bend Up CC107; Bend Down CC108; Cutoff CC19/51; Resonance CC21; KB Amount CC22; EG Amount CC27; Overload CC18;
+  Filter Poles CC109 (0,32,64,96 = 1-4); Filter Vel Sens CC110 (-8…+8 = 0,12,19,…,117 a passi di 7);
+  Filter EG ADSR CC23-26; Volume EG ADSR CC28-31; EGR Release CC111 (0/64); EGR Legato CC112 (0 On,43 Off,86 Reset);
+  Arp Enable CC113; Arp Run/Stop CC90; Arp Clock coarse CC4 (BPM/3) + fine CC36 ((BPM-coarse*3)*10); Arp Clock Source CC114 (0 Int,43 LFO,86 MIDI);
+  Arp Clock Div CC115; Arp Range CC116 (0,19,38,57,71,90,109 = -3…+3); Arp Pattern CC117 (0 Up,43 Down,86 Order); Arp Mode CC118 (0 Loop,43 Back/Forth,86 Once);
+  Arp Latch Enable CC119; Arp Latch CC91; Volume CC7; Key Priority CC88 (0 Glob,32 Low,64 High,96 Last).
+  Clock Divider (CC103/115): 0 1/32, 8 1/32., 16 1/16, 24 1/16., 32 1/8, 40 1/8., 48 1/4, 56 1/4., 64 1/2, 72 1/2., 80 WH, 88 WH+1/4, 96 WH+1/2, 104 WH+1/2., 112 WH+WH.
+- Con il Pot Mapping attivo in una sezione, quella manopola manda il CC scelto dall'utente invece di quelli in tabella (p. 37).
+- Program Change 0-99 (100 preset).
+- SysEx: il manuale **non documenta il formato** né un messaggio di richiesta. I dump partono dal synth (MASTER → SYSEX: Send Current Preset,
+  Send All Presets, Bulk Dump) e il synth li riceve sempre: un preset singolo viene **scritto subito nella posizione corrente** (attenzione: sovrascrive),
+  un banco sostituisce tutti i preset. L'editor quindi: riceve e salva i .syx inviati dal synth, li rimanda con conferma, e legge i valori del pannello dai CC.
+  La mappatura byte→parametro del dump va ricavata col Laboratorio, se serve.
+
 ## Come si lavora
 Claude non può collegarsi agli strumenti: Francesco prova, riporta il log del Laboratorio o il comportamento, e si corregge a iterazioni. Mantenere compatibilità con i file .syx e con i backup .json già esportati.
