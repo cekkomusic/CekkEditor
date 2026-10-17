@@ -9,3 +9,4 @@
 
 ## Korg microKORG XL
 - Manuale (Google Drive): https://drive.google.com/file/d/1SznfQYJDKvtaaqJddm5txHxUYo91KIuv/view
+- Manuale (Korg): https://cdn.korg.com/us/support/download/files/9992be0e2327da2fcc3b4183153868f7.pdf
