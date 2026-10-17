@@ -72,7 +72,15 @@ main{max-width:1100px;margin:0 auto;padding:14px 16px 0;display:flex;flex-direct
 .card .port{font-family:var(--f-mono);font-size:11px;color:var(--dim);margin-right:auto;display:flex;align-items:center;gap:6px;min-width:0}
 .card .port span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card button.open{background:var(--accent);border-color:var(--accent);color:#111}
-.card.soon h3{color:var(--dim)}
+/* ogni scheda richiama il suo synth */
+.card[data-id=take5]{background:#232427}
+.card[data-id=take5] .art{background:#0b0b0c}
+.card[data-id=mkxl]{background:linear-gradient(#dfe1e3,#aeb2b6);color:#141414;border-color:#7d8186}
+.card[data-id=mkxl] .mk,.card[data-id=mkxl] .ds,.card[data-id=mkxl] .port{color:#3f4246}
+.card[data-id=mkxl] .art{background:#0c0c0d;border-bottom-color:#7d8186}
+.card[data-id=phatty]{background:#151515;border-left:8px solid #6c6e72;border-right:8px solid #6c6e72}
+.card[data-id=phatty] .art{background:#0c0c0d}
+.card.soon button{opacity:.7}
 .nav{display:flex;align-items:center;justify-content:center;gap:10px}
 .dots{display:flex;gap:8px}
 .dots button{width:10px;height:10px;padding:0;border-radius:50%;background:var(--line);border:0}
@@ -136,17 +144,17 @@ main{max-width:1100px;margin:0 auto;padding:14px 16px 0;display:flex;flex-direct
 <script>
 "use strict";
 /* ============ SYNTH DISPONIBILI ============ */
-// art: aspetto provvisorio della scheda (da rifinire con le foto degli strumenti)
+// il disegno di ogni scheda è in ART, più sotto
 const SYNTHS=[
  {id:"take5",name:"Take 5",maker:"Sequential",desc:"Polifonico analogico a 5 voci · 44 tasti",url:"take5/",ready:true,
   mIn:/take\s*5|sequential|dsi/i,mOut:/take\s*5|sequential|dsi/i,
-  art:{panel:"#17181b",accent:"#ff8a2a",knobs:[9,9],screen:true,white:26}},
+  accent:"#ff6a1f"},
  {id:"mkxl",name:"microKORG XL",maker:"Korg",desc:"Synth e vocoder · 37 mini tasti",url:null,ready:false,
   mIn:/microkorg.*(kbd|knob)|microkorg/i,mOut:/microkorg.*sound|microkorg/i,
-  art:{panel:"#202326",accent:"#4fb3ff",knobs:[5,3],screen:true,white:22,mini:true}},
+  accent:"#f7a531"},
  {id:"phatty",name:"Little Phatty",maker:"Moog",desc:"Monofonico analogico · 37 tasti",url:null,ready:false,
   mIn:/phatty|moog/i,mOut:/phatty|moog/i,
-  art:{panel:"#141414",accent:"#e9c46a",knobs:[6,1],screen:false,white:22,big:true}},
+  accent:"#ff9a3c"},
 ];
 
 /* ============ MIDI CONDIVISO (usato anche dagli editor nell'iframe) ============ */
@@ -221,27 +229,103 @@ function renderStatus(){
   const cur=$("#editor").dataset.id;if(cur){const a=assign[cur]||{};$("#edDot").classList.toggle("on",!!(m&&a.in&&a.out))}
 }
 
-function panelArt(s){
-  // pannello stilizzato: manopole, display e tastiera. Niente loghi.
-  const A=s.art,W=320,H=160,kb=A.mini?44:52,top=H-kb;
-  let g=`<rect width="${W}" height="${H}" fill="${A.panel}"/><rect x="0" y="0" width="${W}" height="3" fill="${A.accent}" opacity=".85"/>`;
-  let x0=A.screen?92:18;
-  if(A.screen)g+=`<rect x="16" y="20" width="62" height="28" rx="3" fill="#0f1a14" stroke="#050806"/><rect x="22" y="28" width="38" height="4" fill="#9ff0b4" opacity=".7"/><rect x="22" y="36" width="24" height="3" fill="#9ff0b4" opacity=".4"/>`;
-  A.knobs.forEach((n,r)=>{const sp=(W-x0-14)/n,rad=Math.min(A.big?13:9,sp/2-3),y=24+r*(top-30)/Math.max(1,A.knobs.length)+(A.knobs.length===1?(top-48)/2:0);
-    for(let i=0;i<n;i++){const cx=x0+sp*i+sp/2;const ang=-130+((i*37+r*53)%260);const rr=ang*Math.PI/180;
-      g+=`<circle cx="${cx}" cy="${y+rad}" r="${rad}" fill="#2a2c31" stroke="#050505"/><line x1="${cx}" y1="${y+rad}" x2="${(cx+Math.sin(rr)*rad*.8).toFixed(1)}" y2="${(y+rad-Math.cos(rr)*rad*.8).toFixed(1)}" stroke="${i%3===0?A.accent:"#e9e6df"}" stroke-width="1.6" stroke-linecap="round"/>`}});
-  const kw=(W-16)/A.white;g+=`<rect x="6" y="${top}" width="${W-12}" height="${kb-6}" fill="#0b0b0b"/>`;
-  for(let i=0;i<A.white;i++)g+=`<rect x="${(8+i*kw).toFixed(1)}" y="${top+2}" width="${(kw-1.2).toFixed(1)}" height="${kb-10}" rx="1" fill="#e8e5dc"/>`;
-  for(let i=0;i<A.white-1;i++){const n=i%7;if(n===2||n===6)continue;g+=`<rect x="${(8+(i+1)*kw-kw*.3).toFixed(1)}" y="${top+2}" width="${(kw*.6).toFixed(1)}" height="${(kb-10)*.6}" fill="#111"/>`}
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`;
+/* Disegni delle schede, ricavati dalle foto degli strumenti: forme e colori del pannello, nessun logo né scritta di marca. */
+const sv=(w,h,g)=>`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${g}</svg>`;
+function knob(cx,cy,r,o={}){
+  const cap=o.cap||"#c5c7cb",ptr=o.ptr||"#141414",a=(o.a??(cx*7+cy*3)%240-120)*Math.PI/180;
+  let g="";
+  if(o.ring){for(let i=0;i<o.ring.n;i++){const t=(-135+270*i/(o.ring.n-1))*Math.PI/180;g+=`<line x1="${(cx+Math.sin(t)*(r+1.6)).toFixed(1)}" y1="${(cy-Math.cos(t)*(r+1.6)).toFixed(1)}" x2="${(cx+Math.sin(t)*(r+3.4)).toFixed(1)}" y2="${(cy-Math.cos(t)*(r+3.4)).toFixed(1)}" stroke="${o.ring.c}" stroke-width="${o.ring.w||.9}" stroke-linecap="round"/>`}}
+  if(o.glow)g+=`<path d="M${(cx-Math.sin(.8*Math.PI)*(r+2.5)).toFixed(1)} ${(cy+Math.cos(.8*Math.PI)*-(r+2.5)).toFixed(1)}A${r+2.5} ${r+2.5} 0 1 1 ${(cx+Math.sin(.8*Math.PI)*(r+2.5)).toFixed(1)} ${(cy+Math.cos(.8*Math.PI)*-(r+2.5)).toFixed(1)}" fill="none" stroke="${o.glow}" stroke-width="1.6" opacity=".9"/>`;
+  g+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${o.body||"#101011"}"/><circle cx="${cx}" cy="${cy}" r="${(r*(o.capr||.68)).toFixed(1)}" fill="${cap}"/>`;
+  g+=`<line x1="${cx}" y1="${cy}" x2="${(cx+Math.sin(a)*r*.62).toFixed(1)}" y2="${(cy-Math.cos(a)*r*.62).toFixed(1)}" stroke="${ptr}" stroke-width="${Math.max(.8,r*.16).toFixed(1)}" stroke-linecap="round"/>`;
+  return g;
 }
+// tastiera: n tasti bianchi a partire dalla nota indicata (0=Do … 6=Si)
+function keys(x,y,w,h,n,start,o={}){
+  const kw=w/n,wc=o.white||"#e7e4dc";let g=`<rect x="${x-1}" y="${y-1}" width="${w+2}" height="${h+2}" fill="#050505"/>`;
+  for(let i=0;i<n;i++)g+=`<rect x="${(x+i*kw+.4).toFixed(1)}" y="${y}" width="${(kw-.8).toFixed(1)}" height="${h}" rx=".8" fill="${wc}"/>`;
+  for(let i=0;i<n-1;i++){const nt=(start+i)%7;if(nt===2||nt===6)continue;g+=`<rect x="${(x+(i+1)*kw-kw*.3).toFixed(1)}" y="${y}" width="${(kw*.6).toFixed(1)}" height="${(h*.6).toFixed(1)}" rx=".6" fill="${o.black||"#121212"}"/>`}
+  return g;
+}
+const sq=(x,y,c,s=6)=>`<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="1" fill="${c}" stroke="#000" stroke-width=".5"/>`;
+const ART={
+  take5(){
+    let g=`<rect width="320" height="160" fill="#0b0b0c"/><rect x="4" y="5" width="312" height="90" rx="3" fill="#232427"/>`;
+    // fila alta: LFO, display, clock, arp, effetto
+    [16,40,64,90,212,236,262,284,302].forEach((x,i)=>g+=knob(x,17,5.2));
+    [168,190].forEach(x=>g+=knob(x,22,4.2));
+    g+=`<rect x="120" y="9" width="30" height="16" rx="1.5" fill="#04060a" stroke="#000"/><rect x="124" y="13" width="18" height="2" fill="#d6eaff" opacity=".8"/><rect x="124" y="18" width="12" height="2" fill="#d6eaff" opacity=".5"/>`;
+    [[30,30],[52,30],[76,30],[100,30],[262,30],[284,30]].forEach(([x,y])=>g+=sq(x-3,y,"#141517",6));
+    g+=sq(253,27,"#ff2a22",6);
+    [72,96,120,144,168,192,216,240,264,288,302,252].forEach((x,i)=>g+=`<line x1="${x}" y1="6" x2="${x}" y2="40" stroke="#3b3d42" stroke-width=".5" ${i>1?'opacity="0"':''}/>`);
+    // ruote e fascia ardesia
+    g+=`<rect x="10" y="46" width="9" height="30" rx="2" fill="#0d0d0e"/><rect x="23" y="46" width="9" height="30" rx="2" fill="#0d0d0e"/>`;
+    g+=`<rect x="64" y="42" width="248" height="42" rx="5" fill="#3a3f4a"/>`;
+    [[78,52],[98,52],[118,52],[78,72],[98,72],[118,72],[140,52],[158,52],[140,72],[158,72]].forEach(([x,y])=>g+=knob(x,y,5));
+    g+=knob(196,62,10,{ring:{n:17,c:"#ff6a1f",w:1.1}});
+    [[176,52],[176,72]].forEach(([x,y])=>g+=knob(x,y,4.6));
+    [222,240,258,276,294].forEach(x=>{g+=knob(x,53,4.8);g+=knob(x,72,4.8)});
+    g+=sq(303,49,"#ff2a22",5);
+    // tasti programma e display rosso
+    g+=`<rect x="146" y="86" width="20" height="7" fill="#120404"/><text x="156" y="92" font-family="monospace" font-size="6.5" fill="#ff3b30" text-anchor="middle">101</text>`;
+    for(let i=0;i<16;i++)g+=sq(170+i*8.6,87,i===0?"#ff2a22":"#141517",5);
+    [10,26,44,62,80].forEach(x=>g+=sq(x,87,"#141517",5));
+    g+=keys(6,99,308,57,26,3,{white:"#d9d9d4"});
+    return sv(320,160,g);
+  },
+  mkxl(){
+    let g=`<rect width="320" height="160" fill="#0c0c0d"/><rect x="8" y="20" width="304" height="132" rx="7" fill="#1b1c1e"/>`;
+    g+=`<circle cx="160" cy="26" r="4.5" fill="#0a0a0a" stroke="#3a3b3e"/><circle cx="160" cy="26" r="1.6" fill="#2b2c2f"/>`;
+    g+=`<defs><linearGradient id="mkS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2e4e6"/><stop offset=".5" stop-color="#c3c6ca"/><stop offset="1" stop-color="#a3a7ac"/></linearGradient></defs>`;
+    g+=`<rect x="14" y="34" width="292" height="46" rx="2" fill="url(#mkS)" stroke="#7d8186" stroke-width=".6"/>`;
+    // volume e livelli a sinistra, due manopole grandi, display ambra, manopole di modifica a destra
+    g+=knob(26,46,4,{cap:"#d9dbde",body:"#2a2b2e"})+knob(42,46,4,{cap:"#d9dbde",body:"#2a2b2e"})+`<rect x="22" y="58" width="10" height="4" rx="2" fill="#2a2b2e"/>`;
+    g+=`<line x1="54" y1="38" x2="54" y2="76" stroke="#8d9196" stroke-width=".6"/>`;
+    for(let i=0;i<8;i++){g+=`<rect x="66" y="${41+i*4}" width="10" height="1.4" fill="#55595e"/><rect x="122" y="${41+i*4}" width="10" height="1.4" fill="#55595e"/><rect x="146" y="${41+i*4}" width="10" height="1.4" fill="#55595e"/><rect x="202" y="${41+i*4}" width="10" height="1.4" fill="#55595e"/>`}
+    g+=knob(99,57,12,{cap:"#d4d6d9",body:"#151515",capr:.45,ring:{n:9,c:"#55595e",w:.7}});
+    g+=knob(179,57,12,{cap:"#d4d6d9",body:"#151515",capr:.45,ring:{n:9,c:"#55595e",w:.7}});
+    g+=`<rect x="222" y="40" width="34" height="22" rx="1.5" fill="#2a1a06"/><rect x="224" y="42" width="30" height="18" fill="#f7a531"/><rect x="227" y="45" width="16" height="2.4" fill="#5a3504"/><rect x="227" y="50" width="22" height="3.2" fill="#5a3504"/><rect x="227" y="55" width="10" height="2.4" fill="#5a3504"/>`;
+    [226,234,242,250].forEach(x=>g+=`<rect x="${x}" y="66" width="5" height="3" rx=".8" fill="#2a2b2e"/><circle cx="${x+2.5}" cy="73" r=".9" fill="#ff8a1f"/>`);
+    g+=`<line x1="262" y1="38" x2="262" y2="76" stroke="#8d9196" stroke-width=".6"/>`;
+    g+=knob(272,46,4.2,{cap:"#d9dbde",body:"#2a2b2e"});
+    for(let i=0;i<5;i++)g+=`<rect x="280" y="${40+i*3.4}" width="20" height="1.2" fill="#55595e"/>`;
+    [272,286,300].forEach(x=>g+=knob(x,66,4.6,{cap:"#e3e5e7",body:"#2a2b2e"}));
+    // ruote e mini tastiera
+    g+=`<rect x="16" y="94" width="7" height="22" rx="2" fill="#0b0b0b"/><rect x="27" y="94" width="7" height="22" rx="2" fill="#0b0b0b"/>`;
+    g+=keys(42,88,262,54,22,0);
+    return sv(320,160,g);
+  },
+  phatty(){
+    let g=`<rect width="320" height="160" fill="#0c0c0d"/>`;
+    g+=`<rect x="2" y="6" width="12" height="150" rx="3" fill="#6c6e72"/><rect x="306" y="6" width="12" height="150" rx="3" fill="#6c6e72"/>`;
+    g+=`<rect x="14" y="10" width="292" height="80" fill="#151515"/><rect x="14" y="10" width="292" height="7" fill="#1f1f1f"/>`;
+    [88,128,198,250,294].forEach(x=>g+=`<line x1="${x}" y1="10" x2="${x}" y2="80" stroke="#6b6d70" stroke-width=".7"/>`);
+    g+=`<line x1="20" y1="13.5" x2="300" y2="13.5" stroke="#6b6d70" stroke-width=".5"/>`;
+    // display grigio, tasti preset, manopola valore
+    g+=`<rect x="20" y="20" width="62" height="7" fill="#d9d4c3"/><rect x="20" y="28" width="62" height="14" rx="1" fill="#b9bcbf"/><rect x="24" y="31" width="40" height="2" fill="#2b2d30"/><rect x="24" y="36" width="34" height="2" fill="#2b2d30"/>`;
+    const btn=(x,y,c)=>`<rect x="${x}" y="${y}" width="9" height="8" rx="2" fill="${c}" stroke="#000" stroke-width=".6"/>`+(c!=="#4c5763"?`<rect x="${x}" y="${y}" width="9" height="8" rx="2" fill="${c}" opacity=".35" filter="blur(1.5px)"/>`:"");
+    g+=btn(20,48,"#ff9a3c")+btn(32,48,"#4c5763")+knob(54,52,5.5,{cap:"#2a2a2a",body:"#0b0b0b",ptr:"#ddd"})+btn(66,48,"#4c5763")+btn(77,48,"#4c5763");
+    g+=knob(28,70,5,{cap:"#c9cbcd",body:"#1a1a1a",ring:{n:9,c:"#bbb",w:.6}})+btn(44,66,"#ff3b4a")+`<rect x="58" y="62" width="26" height="15" rx="1.5" fill="#3a3c40"/>`+btn(60,65,"#4c5763")+btn(72,65,"#4c5763");
+    // quattro manopole grandi con anello di LED arancioni
+    [[108,32],[163,32],[224,32],[272,32]].forEach(([x,y])=>{g+=`<circle cx="${x}" cy="${y}" r="13" fill="#0a0a0a"/>`;g+=knob(x,y,9.5,{cap:"#d8dadc",body:"#111",capr:.5,glow:"#ff8a1f",ring:{n:13,c:"#5a3a1c",w:.8}})});
+    g+=knob(300,30,4.5,{cap:"#d8dadc",body:"#1a1a1a"});
+    [[94,52,"#4c5763"],[94,68,"#ff9a3c"],[134,62,"#4c5763"],[150,62,"#4c5763"],[166,52,"#4c5763"],[166,68,"#ff3b4a"],[182,52,"#ff9a3c"],[182,68,"#4c5763"],
+     [204,62,"#4c5763"],[220,62,"#4c5763"],[236,62,"#ff9a3c"],[256,50,"#4c5763"],[268,50,"#4c5763"],[280,50,"#ff9a3c"],[256,66,"#4c5763"],[268,66,"#4c5763"],[280,66,"#4c5763"],[297,46,"#ff3b4a"]].forEach(([x,y,c])=>g+=btn(x-4.5,y,c));
+    g+=`<rect x="200" y="46" width="44" height="12" rx="1.5" fill="#3a3c40"/>`+btn(207,48,"#4c5763")+btn(229,48,"#4c5763");
+    // fronte, ruote illuminate e tastiera
+    g+=`<rect x="14" y="90" width="292" height="12" fill="#0f0f0f"/><rect x="14" y="102" width="292" height="46" fill="#121212"/><rect x="14" y="148" width="292" height="8" fill="#0a0a0a"/>`;
+    g+=`<rect x="22" y="110" width="10" height="20" rx="2" fill="#4a4a4a"/><rect x="25" y="112" width="4" height="16" rx="1.5" fill="#ff8a1f" opacity=".9"/><rect x="40" y="110" width="10" height="20" rx="2" fill="#4a4a4a"/><rect x="43" y="112" width="4" height="16" rx="1.5" fill="#ff8a1f" opacity=".9"/>`;
+    g+=keys(70,96,232,50,22,0);
+    return sv(320,160,g);
+  },
+};
 function buildCarousel(){
   const car=$("#car"),dots=$("#dots");
   SYNTHS.forEach((s,i)=>{
-    const art=el("div",{class:"art"});art.innerHTML=panelArt(s);
+    const art=el("div",{class:"art"});art.innerHTML=ART[s.id]();
     const btn=el("button",{class:s.ready?"open":"",type:"button",onclick:()=>openEditor(s)},s.ready?"Apri editor":"In preparazione");
     if(!s.ready)btn.disabled=true;
-    const card=el("article",{class:"card"+(s.ready?"":" soon"),"data-id":s.id,style:`--accent:${s.art.accent}`,"aria-label":s.name},art,
+    const card=el("article",{class:"card"+(s.ready?"":" soon"),"data-id":s.id,style:`--accent:${s.accent}`,"aria-label":s.name},art,
       el("div",{class:"info"},el("div",{class:"mk"},s.maker),el("h3",{},s.name),el("div",{class:"ds"},s.desc),
         el("div",{class:"row"},el("div",{class:"port"},el("span",{class:"dot"}),el("span",{},"MIDI non collegato")),btn)));
     car.append(card);

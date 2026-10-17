@@ -25,7 +25,17 @@ Ogni editor deve:
 - Pubblicazione su **GitHub Pages** dal ramo `ccr-650e1c9a-a8zli2`, cartella radice: https://cekkomusic.github.io/CekkEditor/
 - Service worker «prima la rete»: gli aggiornamenti arrivano subito; la cache serve solo senza connessione. Cambiare `CACHE` in `sw.js` se cambia l'elenco `CORE`.
 - Interfaccia in italiano. Layout a schede sotto gli 820 px.
-- Grafica: ogni editor richiama il proprio synth (colori, manopole, disposizione), **senza loghi o marchi**. In attesa delle foto degli strumenti, le schede del carosello (`panelArt` in `index.html`) sono provvisorie.
+- Grafica: ogni editor richiama il proprio synth (colori, manopole, disposizione), **senza loghi o marchi**. Le schede del carosello sono disegnate in `ART` dentro `index.html`.
+  Le foto inviate da Francesco (prodotto e editor di terze parti) servono solo da riferimento e non vanno messe nel repository.
+  - **Take 5** (fatto): corpo nero, pannello #222326, fila alta a sezioni separate da filetti con titolo sopra; fascia centrale ardesia #3a3f4a
+    (Oscillators, Mixer, Filter, Envelopes) con titoli grandi in basso; manopole nere a calotta grigio chiaro con indice nero e tacche bianche;
+    Cutoff grande con tacche arancioni #ff6a1f; tasti quadrati neri che si accendono di rosso; display OLED bianco-azzurro; display programma rosso a 7 segmenti.
+  - **microKORG XL** (da fare): corpo nero, fascia frontale in alluminio spazzolato, due manopole grandi nere (Genre / Category), display ambra #f7a531,
+    piccole manopole a destra, 37 mini tasti, presa microfono al centro. Gli editor di riferimento mostrano: pagina Program con lista dei 128 programmi
+    (A11-B88) su più colonne in carattere da display; pagina Timbre con forme d'onda e curve EG/filtro disegnate su sfondo nero; Virtual Patch a 6 righe.
+  - **Little Phatty** (da fare): pannello nero con fiancate grigie, intestazioni di sezione su fascia sottile (Modulation, Oscillators, Filter,
+    Envelope Generators, Output), quattro manopole grandi con anello di LED arancioni, tasti arrotondati grigio-blu #4c5763 che si accendono
+    arancio o rosso, display LCD grigio chiaro, ruote illuminate arancio. Gli editor di riferimento hanno grafici degli inviluppi Amp/Filter e selettori a lista verticale (Source, Destination, Octave, Filter Poles).
 - Conferma dentro la pagina prima di qualunque scrittura nella memoria dello strumento.
 
 ## Take 5 — dati chiave (da "Take 5 MIDI Implementation 1.2" e User's Guide 2.x)
