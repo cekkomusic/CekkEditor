@@ -91,6 +91,8 @@ Generato dagli editor: chiave, parametro, valori ammessi e, per le liste, il sig
 | `169` | Voice · Program › Tastiera › -1 Oct | 0/1 |  |
 | `171` | Voice · Program › Tastiera › -2 Oct | 0/1 |  |
 | `170` | Voice · Program › Tastiera › Split | 0–44 |  |
+| `4198` | Step Seq › Play | 0/1 |  |
+| `4199` | Step Seq › Record | 0/1 |  |
 | `77` | Mod Matrix › Src 1 | 0–19 |  |
 | `93` | Mod Matrix › Amt 1 | 0–255 (centro 127) |  |
 | `109` | Mod Matrix › Dst 1 | 0–54 |  |

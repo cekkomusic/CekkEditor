@@ -1,7 +1,7 @@
 # Manuali di riferimento
 
 ## Sequential Take 5
-- MIDI Implementation 1.2: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf
+- MIDI Implementation 1.2 nel repository: [`Take-5-MIDI-Implementation-1.2.pdf`](Take-5-MIDI-Implementation-1.2.pdf) — online: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf
 - User's Guide 2.3: https://sequential.com/wp-content/uploads/2026/01/Take-5-Users-Guide-v2_3.pdf
 
 ## Moog Little Phatty

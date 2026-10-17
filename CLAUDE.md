@@ -41,7 +41,7 @@ Ogni editor deve:
   Take 5 fino a 16 nelle posizioni 1… del banco scelto; microKORG XL in programmi consecutivi da «Dal programma».
 
 ## Take 5 — dati chiave (da "Take 5 MIDI Implementation 1.2" e User's Guide 2.x)
-- Manuali: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf
+- MIDI Implementation 1.2 nel repository: `docs/Take-5-MIDI-Implementation-1.2.pdf` (letta). Manuali: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf
   e https://sequential.com/wp-content/uploads/2026/01/Take-5-Users-Guide-v2_3.pdf
 - Parametri via NRPN: CC 99/98 numero, CC 6/38 valore (14 bit).
 - SysEx: header `F0 01 35`.
@@ -50,6 +50,9 @@ Ogni editor deve:
   - Device Inquiry: `F0 7E 7F 06 01 F7`, risposta con `01 35`.
 - Dati in formato "packed MS bit": pacchetti da 8 byte, il primo contiene i bit alti dei 7 successivi (4096 byte → ~4695 byte MIDI).
 - Banchi: 0-7 = User U1-U8, 8-15 = Factory F1-F8 (non sovrascrivibili).
+- Dal documento: NRPN 0-66, 68-73, 75-124, 163-171 (programma), **4198 SeqOnOff e 4199 SeqRecordArm** (unici comandi del sequencer: le note degli step
+  non sono esposte via MIDI), globali 4096-4122. NRPN 67 e 74 non compaiono. FXSelect 0-8 nel documento. Esiste anche la mappa CC (Param Snd/Rcv = CC)
+  con valori a 7 bit; l'editor usa gli NRPN. Richiesta globali `F0 01 35 0E F7` (dump solo in uscita, i globali si cambiano via NRPN).
 
 ## Punti aperti sul Take 5
 - **Mappatura byte del dump → parametri non documentata.** L'editor ipotizza "indice byte = numero NRPN" (cutoff = byte 29 LSB + 30 MSB) e la scarta se più di 4 valori escono di scala. Va verificata con il Laboratorio (istantanea A/B + confronta).
