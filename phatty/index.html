@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Little Phatty Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Pannello ispirato al Little Phatty: pannello nero con fiancate grigie, titoli di sezione su una fascia sottile con filetti, manopole nere con anello di LED arancioni, tasti arrotondati grigio-blu che si accendono arancio o rosso, liste verticali con LED, display LCD grigio chiaro. Nessun logo. */
+:root{
+  --body:#0b0b0c; --panel:#151515; --panel2:#1d1d1e; --cheek:#6c6e72; --line:#5d5f63; --legend:#e8e6e0; --dim:#9a9c9f;
+  --btn:#4c5763; --btn-hi:#66717d; --led:#ff8a1f; --led-off:#3b2a1c; --red:#ff3b4a; --lcd:#b9bcbf; --lcd-ink:#24272b; --danger:#ff6a5e; --ok:#5fd38a;
+  --f-panel:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--body);color:var(--legend);font-family:var(--f-panel);font-size:15px}
+body{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+button,select,input{font-family:var(--f-panel);font-size:14px}
+button{background:var(--btn);color:#f2f2f2;border:1px solid #000;border-radius:6px;padding:6px 10px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+button:hover{background:var(--btn-hi)}
+button:focus-visible,select:focus-visible,.knob:focus-visible,input:focus-visible,.vl button:focus-visible{outline:2px solid var(--led);outline-offset:2px}
+button.primary{background:var(--led);color:#2a1300;border-color:#7a3d06}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.45;cursor:not-allowed}
+select,input[type=text]{background:#0e0e0f;color:var(--legend);border:1px solid #3a3b3e;border-radius:4px;padding:5px 6px;max-width:100%}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+
+/* barra MIDI (solo se l'editor è aperto da solo) */
+.topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid #000;border-radius:6px;padding:10px 12px}
+.brand{font-weight:700;font-size:24px;letter-spacing:.1em;text-transform:uppercase;margin-right:auto}
+.brand small{display:block;font-size:11px;letter-spacing:.2em;color:var(--dim);font-weight:500}
+.field{display:flex;flex-direction:column;gap:2px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.status{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--led-off)}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.dot.act{background:var(--led);box-shadow:0 0 8px var(--led)}
+body.embedded .topbar{display:none}
+
+/* il synth: fiancate grigie intorno al pannello */
+.synth{background:var(--panel);border:1px solid #000;border-left:10px solid var(--cheek);border-right:10px solid var(--cheek);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:12px}
+.head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start}
+.lcd{background:linear-gradient(180deg,#c9ccce,var(--lcd));border:3px solid #2c2d30;border-radius:3px;padding:8px 12px;font-family:var(--f-mono);color:var(--lcd-ink);min-height:86px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-content:center;box-shadow:inset 0 0 10px rgba(0,0,0,.25)}
+.lcd .big{font-size:19px;grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.lcd .sm{font-size:12px;opacity:.85}
+.lcd .val{font-size:15px;text-align:right}
+.progbox{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+
+/* schede (solo telefono) */
+.tabs{display:none;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tabs button{flex:0 0 auto}
+.tabs button[aria-pressed=true]{background:var(--led);color:#2a1300;border-color:var(--led)}
+
+/* pannello */
+.panel{display:flex;flex-wrap:wrap;gap:0}
+.sec{padding:0 12px 12px;flex:1 1 auto;min-width:0;border-left:1px solid var(--line)}
+.sec:first-child{border-left:0}
+.sec h2{margin:0 -12px 10px;padding:3px 12px 4px;font-size:13px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#f1f1ee;text-align:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#1b1b1c}
+.row{display:flex;flex-wrap:wrap;gap:8px 6px;align-items:flex-start;justify-content:center}
+.row+.row{margin-top:10px}
+.sub{font-size:11px;font-weight:700;letter-spacing:.14em;color:#d9d9d6;text-transform:uppercase;width:100%;text-align:left;display:flex;align-items:center;gap:6px}
+.sub::after{content:"";flex:1;border-top:1px solid #3a3b3e}
+.ctl{width:66px;display:flex;flex-direction:column;align-items:center;gap:3px;user-select:none;-webkit-user-select:none}
+.ctl .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-align:center;line-height:1.05;min-height:23px;display:flex;align-items:flex-end;justify-content:center;order:3}
+.ctl .v{font-family:var(--f-mono);font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;min-height:14px;order:4;white-space:nowrap}
+.knob{width:54px;height:54px;touch-action:none;cursor:ns-resize;border-radius:50%}
+.knob.big{width:92px;height:92px}
+.ctl.bigc{width:110px}
+.knob svg{display:block;width:100%;height:100%;overflow:visible}
+.ctl:has(select){width:auto;min-width:66px}
+.ctl select{order:2}
+.sw{width:34px;height:28px;padding:0;border-radius:7px;background:var(--btn);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.sw[aria-pressed=true]{background:var(--led);box-shadow:0 0 12px rgba(255,138,31,.65),inset 0 1px 0 rgba(255,255,255,.35)}
+.sw.red[aria-pressed=true]{background:var(--red);box-shadow:0 0 12px rgba(255,59,74,.6),inset 0 1px 0 rgba(255,255,255,.35)}
+/* lista verticale con LED, come le colonne SOURCE / DESTINATION / OCTAVE */
+.vl{display:flex;flex-direction:column;gap:1px;order:2;background:#0e0e0f;border:1px solid #2b2c2e;border-radius:4px;padding:3px}
+.vl button{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px 2px 4px;border-radius:3px;color:#cfcfcc;white-space:nowrap}
+.vl button i{width:6px;height:6px;border-radius:50%;background:var(--led-off);flex:0 0 auto}
+.vl button[aria-pressed=true]{color:#fff;background:#262628}
+.vl button[aria-pressed=true] i{background:var(--led);box-shadow:0 0 6px var(--led)}
+.ctl.vlc{width:auto;min-width:66px}
+.scr{background:#0c0c0d;border:1px solid #2b2c2e;border-radius:3px;display:block}
+.scr path{fill:none;stroke:var(--led);stroke-width:1.6;stroke-linejoin:round}
+.scr .fill{fill:rgba(255,138,31,.15);stroke:none}
+
+/* libreria e lab */
+.lower{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
+.card{background:var(--panel);border:1px solid #000;border-radius:8px;padding:12px}
+.card h3{margin:0 0 4px;font-size:16px;letter-spacing:.18em;text-transform:uppercase}
+.card h4{margin:14px 0 6px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.card p.hint{margin:0 0 10px;color:var(--dim);font-size:13px;line-height:1.35;font-family:system-ui,sans-serif;max-width:72ch}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.list{display:flex;flex-direction:column;border:1px solid #000;border-radius:6px;overflow:hidden;max-height:380px;overflow-y:auto}
+.item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid #2a2b2d}
+.item:last-child{border-bottom:0}
+.item:nth-child(odd){background:#1c1c1d}
+.item .n{font-family:var(--f-mono);font-size:12px;color:var(--led)}
+.item .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.item .nm small{display:block;font-family:var(--f-mono);font-size:10px;color:var(--dim)}
+.item .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.item .acts button{padding:4px 7px;font-size:12px}
+.empty{padding:18px;color:var(--dim);font-family:system-ui,sans-serif;font-size:13px}
+.log{font-family:var(--f-mono);font-size:11.5px;background:#0c0c0d;border:1px solid #000;border-radius:6px;padding:8px;height:200px;overflow:auto;white-space:pre-wrap;color:#c9cbd1}
+.confirm{margin-top:8px;background:#2a1210;border:1px solid var(--danger);border-radius:6px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:system-ui,sans-serif;font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#232325;border:1px solid var(--led);color:var(--legend);padding:8px 14px;border-radius:6px;font-family:system-ui,sans-serif;font-size:13px;z-index:20;max-width:90vw}
+.opts{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-family:system-ui,sans-serif;font-size:13px;color:var(--dim);margin-bottom:8px}
+.opts label{display:flex;gap:6px;align-items:center}
+
+@media (max-width:900px){.head,.lower{grid-template-columns:1fr}}
+@media (max-width:820px){
+  .tabs{display:flex}
+  .panel [data-tab]:not(.show),.lower>[data-tab]:not(.show){display:none}
+  .panel:not(:has(.show)){display:none}
+  .sec{flex-basis:100%;border-left:0}
+  .synth{border-left-width:6px;border-right-width:6px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">Little Phatty Editor<small>Editor e librarian via USB MIDI</small></div>
+    <label class="field">Ingresso<select id="selIn"><option value="">—</option></select></label>
+    <label class="field">Uscita<select id="selOut"><option value="">—</option></select></label>
+    <label class="field">Canale<select id="selCh"></select></label>
+    <button id="btnConnect" class="primary">Collega MIDI</button>
+    <div class="status"><span class="dot" id="dotLink"></span><span id="txtLink">Non collegato</span><span class="dot" id="dotAct" title="Attività MIDI"></span></div>
+  </div>
+
+  <div class="synth">
+    <div class="head">
+      <div class="lcd" aria-live="polite">
+        <div class="big" id="lcdName">Pannello</div>
+        <div class="sm" id="lcdParam">Gira una manopola sul synth o nell'editor.</div>
+        <div class="val" id="lcdVal"></div>
+        <div class="sm" id="lcdInfo" style="grid-column:1/-1">Il synth non comunica i valori del preset: il pannello li impara man mano.</div>
+      </div>
+      <div class="progbox">
+        <label class="field">Preset<select id="selProg"></select></label>
+        <button id="btnPC" class="primary" title="Invia Program Change">Richiama sul synth</button>
+        <button id="btnSendPanel" title="Invia tutti i valori del pannello (non scrive nella memoria del synth)">Invia pannello</button>
+        <button id="btnSavePanel">Salva pannello in libreria</button>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sezioni"></nav>
+    <div class="panel" id="panel"></div>
+  </div>
+
+  <div class="lower">
+    <section class="card" data-tab="lib" id="libCard">
+      <h3>Libreria</h3>
+      <p class="hint">Il Little Phatty non risponde a richieste dal computer, quindi i suoni si salvano in due modi. <b>Pannelli</b>: i valori di tutti i parametri dell'editor; «Invia» li rimanda al synth e ricrea il suono senza toccarne la memoria. <b>Dump SysEx</b>: sul synth avvia MASTER › SYSEX › «Send Current Preset» o «Send All Presets» mentre l'editor è aperto; li ricevi qui e puoi salvarli su file .syx.</p>
+      <div class="tools">
+        <button id="btnImport">Importa .syx / backup</button>
+        <input type="file" id="fileIn" accept=".syx,.json,application/octet-stream,application/json" multiple hidden>
+        <button id="btnExportJson" title="Backup completo della libreria">Backup</button>
+        <button id="btnClear" class="danger">Svuota</button>
+      </div>
+      <div id="confirmBox"></div>
+      <h4>Pannelli</h4>
+      <div class="list" id="panList"></div>
+      <h4>Dump SysEx</h4>
+      <div class="list" id="dumpList"></div>
+    </section>
+    <section class="card" data-tab="lab">
+      <h3>Laboratorio</h3>
+      <p class="hint">Mostra i messaggi scambiati con il synth. Per capire com'è fatto un dump: manda «Send Current Preset» dal synth, premi «Istantanea A», cambia un solo parametro, manda di nuovo il preset e premi «Istantanea B»: «Confronta» mostra quali byte sono cambiati. Copia il risultato e incollalo nella chat.</p>
+      <div class="opts"><label><input type="checkbox" id="chkVerbose"> Mostra tutti i CC ricevuti</label></div>
+      <div class="tools">
+        <button id="btnSnapA">Istantanea A</button>
+        <button id="btnSnapB">Istantanea B</button>
+        <button id="btnDiff">Confronta</button>
+        <button id="btnCopyLog">Copia log</button>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ============ DATI DELLO STRUMENTO (da Little Phatty Stage II User's Manual, tabella CC p. 55-56) ============ */
+// liste: [valore CC, etichetta]; in ricezione vale l'opzione col valore più alto non oltre quello ricevuto
+const CLKDIV=[[0,"1/32"],[8,"1/32 ."],[16,"1/16"],[24,"1/16 ."],[32,"1/8"],[40,"1/8 ."],[48,"1/4"],[56,"1/4 ."],[64,"1/2"],[72,"1/2 ."],[80,"1/1"],[88,"1/1+1/4"],[96,"1/1+1/2"],[104,"1/1+1/2 ."],[112,"2/1"]];
+const OCT=[[0,"16'"],[32,"8'"],[48,"4'"],[64,"2'"]];
+const VELS=[...Array(17)].map((_,i)=>[i===0?0:5+i*7,(i>8?"+":"")+(i-8)]);
+const P=[
+ // Modulation
+ {cc:3,  l:"LFO Rate",   sec:"mod",big:0},
+ {cc:6,  l:"Amount",     sec:"mod"},
+ {cc:68, l:"Source",     sec:"mod",t:"v",o:[[0,"Tri"],[16,"Square"],[32,"Saw"],[48,"Ramp"],[64,"Filt Env"],[80,"Osc 2"]]},
+ {cc:69, l:"Destination",sec:"mod",t:"v",o:[[0,"Pitch"],[16,"Filter"],[32,"Wave"],[48,"Osc 2"]]},
+ {cc:102,l:"LFO Sync",   sec:"mod",g:"LFO",t:"l",o:[[0,"Internal"],[64,"MIDI Clock"]]},
+ {cc:103,l:"Clock Div",  sec:"mod",g:"LFO",t:"l",o:CLKDIV},
+ {cc:104,l:"Mod Src 5",  sec:"mod",g:"Sorgenti extra",t:"l",o:[[0,"Filter Env"],[64,"S&H"]]},
+ {cc:105,l:"Mod Src 6",  sec:"mod",g:"Sorgenti extra",t:"l",o:[[0,"Osc 2"],[64,"Noise"]]},
+ {cc:106,l:"Mod Dest 2", sec:"mod",g:"Sorgenti extra",t:"l",o:[[0,"Off"],[25,"Pitch"],[50,"Filter"],[75,"Wave"],[100,"Osc 2"]]},
+ // Oscillators
+ {cc:74, l:"Octave",     sec:"osc",g:"Osc 1",t:"v",o:OCT,d:32},
+ {cc:9,  l:"Wave",       sec:"osc",g:"Osc 1",wave:1},
+ {cc:15, l:"Level",      sec:"osc",g:"Osc 1",d:127},
+ {cc:75, l:"Octave",     sec:"osc",g:"Osc 2",t:"v",o:OCT,d:32},
+ {cc:10, l:"Freq",       sec:"osc",g:"Osc 2",d:64,c:64},
+ {cc:11, l:"Wave",       sec:"osc",g:"Osc 2",wave:1},
+ {cc:16, l:"Level",      sec:"osc",g:"Osc 2"},
+ {cc:77, l:"1-2 Sync",   sec:"osc",g:"Glide · Sync",t:"s",red:1},
+ {cc:65, l:"Glide",      sec:"osc",g:"Glide · Sync",t:"s",red:1},
+ {cc:5,  l:"Glide Rate", sec:"osc",g:"Glide · Sync"},
+ // Filter
+ {cc:19, l:"Cutoff",     sec:"flt",hi:51,big:1,d:12000},
+ {cc:21, l:"Resonance",  sec:"flt"},
+ {cc:22, l:"KB Amount",  sec:"flt"},
+ {cc:27, l:"EG Amount",  sec:"flt",d:64},
+ {cc:18, l:"Overload",   sec:"flt"},
+ {cc:109,l:"Poles",      sec:"flt",t:"v",o:[[0,"1"],[32,"2"],[64,"3"],[96,"4"]],d:96},
+ {cc:110,l:"Vel Sens",   sec:"flt",t:"l",o:VELS,d:61},
+ // Envelope Generators
+ {cc:23, l:"Attack",     sec:"eg",g:"Filter",eg:0},
+ {cc:24, l:"Decay",      sec:"eg",g:"Filter",eg:0,d:64},
+ {cc:25, l:"Sustain",    sec:"eg",g:"Filter",eg:0,d:64},
+ {cc:26, l:"Release",    sec:"eg",g:"Filter",eg:0,d:30},
+ {cc:28, l:"Attack",     sec:"eg",g:"Volume",eg:1},
+ {cc:29, l:"Decay",      sec:"eg",g:"Volume",eg:1,d:64},
+ {cc:30, l:"Sustain",    sec:"eg",g:"Volume",eg:1,d:110},
+ {cc:31, l:"Release",    sec:"eg",g:"Volume",eg:1,d:30},
+ {cc:111,l:"EGR Release",sec:"eg",g:"Retrigger",t:"s"},
+ {cc:112,l:"Legato",     sec:"eg",g:"Retrigger",t:"l",o:[[0,"On"],[43,"Off"],[86,"Reset"]]},
+ // Output e tastiera
+ {cc:7,  l:"Volume",     sec:"out",d:100},
+ {cc:107,l:"Bend Up",    sec:"out",g:"Tastiera"},
+ {cc:108,l:"Bend Down",  sec:"out",g:"Tastiera"},
+ {cc:88, l:"Key Priority",sec:"out",g:"Tastiera",t:"l",o:[[0,"Global"],[32,"Low"],[64,"High"],[96,"Last"]]},
+ // Arpeggiator
+ {cc:113,l:"Arp On",     sec:"arp",t:"s"},
+ {cc:90, l:"Run",        sec:"arp",t:"s",red:1},
+ {cc:119,l:"Latch On",   sec:"arp",t:"s"},
+ {cc:91, l:"Latch",      sec:"arp",t:"s",red:1},
+ {cc:4,  l:"Tempo",      sec:"arp",bpm:36,d:1200,min:300,max:3000},
+ {cc:114,l:"Clock Src",  sec:"arp",t:"l",o:[[0,"Internal"],[43,"LFO"],[86,"MIDI"]]},
+ {cc:115,l:"Clock Div",  sec:"arp",t:"l",o:CLKDIV,d:16},
+ {cc:116,l:"Range",      sec:"arp",t:"l",o:[[0,"-3"],[19,"-2"],[38,"-1"],[57,"0"],[71,"+1"],[90,"+2"],[109,"+3"]],d:57},
+ {cc:117,l:"Pattern",    sec:"arp",t:"v",o:[[0,"Up"],[43,"Down"],[86,"Order"]]},
+ {cc:118,l:"Mode",       sec:"arp",t:"v",o:[[0,"Loop"],[43,"Back/Forth"],[86,"Once"]]},
+];
+// valori: knob 0-127; Cutoff 0-16383 (CC19 MSB + CC51 LSB); Tempo in decimi di BPM (CC4 grossolano + CC36 fine); liste e interruttori = valore CC
+P.forEach(p=>{p.k="cc"+p.cc;if(p.t==="s"){p.min=0;p.max=127}else if(p.o){p.min=p.o[0][0];p.max=p.o[p.o.length-1][0]}else if(p.hi){p.min=0;p.max=16383}else if(!p.bpm){p.min=0;p.max=127}
+  if(p.d==null)p.d=p.o?p.o[0][0]:p.c!=null?p.c:0});
+const byCC=new Map(P.map(p=>[p.cc,p]));
+const SECTIONS=[
+ {id:"mod",t:"Modulation",tab:"mod"},
+ {id:"osc",t:"Oscillators",tab:"osc"},
+ {id:"flt",t:"Filter",tab:"flt"},
+ {id:"eg",t:"Envelope Generators",tab:"eg"},
+ {id:"out",t:"Output",tab:"out"},
+ {id:"arp",t:"Arpeggiator",tab:"arp"},
+];
+const TABS=[["mod","Modulation"],["osc","Osc"],["flt","Filtro"],["eg","Inviluppi"],["out","Output"],["arp","Arp"],["lib","Libreria"],["lab","Lab"]];
+
+/* ============ STATO ============ */
+const S={vals:{},known:new Set(),access:null,in:null,out:null,ch:0,pending:new Map(),raf:0,rx:{},lib:[],dumps:[],cur:null,curT:0,snapA:null,snapB:null,lastDump:null};
+const ui=new Map();
+const $=s=>document.querySelector(s);
+const el=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a){if(x==="class")e.className=a[x];else if(x.startsWith("on"))e.addEventListener(x.slice(2),a[x]);else e.setAttribute(x,a[x])}k.flat().forEach(c=>c!=null&&e.append(c));return e};
+const optOf=(p,v)=>{let best=p.o[0];for(const o of p.o)if(o[0]<=v)best=o;return best};
+function fmt(p,v){
+  if(p.o)return optOf(p,v)[1];
+  if(p.t==="s")return v>=64?"on":"off";
+  if(p.hi)return String(Math.round(v/16383*1000)/10)+"%";
+  if(p.bpm)return (v/10).toFixed(1)+" bpm";
+  if(p.c!=null){const d=v-p.c;return (d>0?"+":"")+d}
+  return String(v);
+}
+
+/* ============ COSTRUZIONE PANNELLO ============ */
+const A0=Math.PI*0.75,A1=Math.PI*2.25;
+function makeKnob(p){
+  const ns="http://www.w3.org/2000/svg",n=p.big?19:13;
+  const svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox","0 0 50 50");
+  // anello di LED arancioni intorno a una manopola nera con calotta argento
+  let leds="";for(let i=0;i<n;i++){const a=A0+(A1-A0)*i/(n-1);leds+=`<circle class="led" cx="${(25+22.5*Math.cos(a)).toFixed(2)}" cy="${(25+22.5*Math.sin(a)).toFixed(2)}" r="${p.big?1.25:1.5}"/>`}
+  svg.innerHTML=`<g>${leds}</g><circle cx="25" cy="25" r="18" fill="#0a0a0a"/><circle cx="25" cy="25" r="15.5" fill="#1c1c1d" stroke="#000"/>
+    <circle cx="25" cy="25" r="${p.big?8:9}" fill="#cfd1d4"/><circle cx="23.2" cy="22.8" r="${p.big?4.5:5}" fill="#fff" opacity=".35"/>
+    <line class="ptr" x1="25" y1="25" x2="25" y2="9" stroke="#f2f2f2" stroke-width="2.2" stroke-linecap="round"/>`;
+  const ledEls=[...svg.querySelectorAll(".led")];
+  const k=el("div",{class:"knob"+(p.big?" big":""),tabindex:"0",role:"slider","aria-label":p.l,"aria-valuemin":p.min,"aria-valuemax":p.max});
+  k.append(svg);
+  const v=el("div",{class:"v"});
+  const box=el("div",{class:"ctl"+(p.big?" bigc":""),title:`${p.l} · CC ${p.cc}${p.hi?"/"+p.hi:""}${p.bpm?"/"+p.bpm:""}`},el("div",{class:"lbl"},p.l),k,v);
+  let drag=null;
+  k.addEventListener("pointerdown",e=>{k.setPointerCapture(e.pointerId);drag={y:e.clientY,v:S.vals[p.k]};k.focus();e.preventDefault()});
+  k.addEventListener("pointermove",e=>{if(!drag)return;const span=p.max-p.min;const px=e.shiftKey?900:Math.max(160,Math.min(320,span*2));setVal(p,Math.round(drag.v+(drag.y-e.clientY)/px*span),{send:true})});
+  const end=()=>drag=null;k.addEventListener("pointerup",end);k.addEventListener("pointercancel",end);
+  const step=()=>Math.max(1,Math.round((p.max-p.min)/127));
+  k.addEventListener("wheel",e=>{e.preventDefault();setVal(p,S.vals[p.k]+(e.deltaY<0?step():-step()),{send:true})},{passive:false});
+  k.addEventListener("keydown",e=>{let d=0;if(e.key==="ArrowUp"||e.key==="ArrowRight")d=step();if(e.key==="ArrowDown"||e.key==="ArrowLeft")d=-step();if(e.key==="PageUp")d=step()*10;if(e.key==="PageDown")d=-step()*10;if(d){e.preventDefault();setVal(p,S.vals[p.k]+d,{send:true})}});
+  k.addEventListener("dblclick",()=>setVal(p,p.d,{send:true}));
+  ui.set(p.k,{render(val){const t=(val-p.min)/(p.max-p.min||1),a=A0+t*(A1-A0);
+    const lit=Math.round(t*(n-1));ledEls.forEach((c,i)=>{const on=p.c!=null?(i>=Math.min(lit,(n-1)/2)&&i<=Math.max(lit,(n-1)/2)):i<=lit;c.setAttribute("fill",on?"#ff8a1f":"#3b2a1c");c.style.filter=on?"drop-shadow(0 0 1.5px #ff8a1f)":""});
+    svg.querySelector(".ptr").setAttribute("transform",`rotate(${(a-Math.PI*1.5)*180/Math.PI} 25 25)`);
+    v.textContent=S.known.has(p.k)?fmt(p,val):"—";k.setAttribute("aria-valuenow",val);k.setAttribute("aria-valuetext",fmt(p,val))}});
+  return box;
+}
+function makeSwitch(p){
+  const b=el("button",{class:"sw"+(p.red?" red":""),"aria-pressed":"false",type:"button","aria-label":p.l});
+  const v=el("div",{class:"v"});
+  const box=el("div",{class:"ctl",title:`${p.l} · CC ${p.cc}`},el("div",{class:"lbl"},p.l),b,v);
+  b.addEventListener("click",()=>setVal(p,S.vals[p.k]>=64?0:64,{send:true,force:true}));
+  ui.set(p.k,{render(val){b.setAttribute("aria-pressed",val>=64?"true":"false");v.textContent=S.known.has(p.k)?fmt(p,val):"—"}});
+  return box;
+}
+function makeList(p){
+  const s=el("select",{"aria-label":p.l});p.o.forEach(([val,t])=>s.append(el("option",{value:val},t)));
+  s.addEventListener("change",()=>setVal(p,+s.value,{send:true,force:true}));
+  const v=el("div",{class:"v"});
+  const box=el("div",{class:"ctl",title:`${p.l} · CC ${p.cc}`},el("div",{class:"lbl"},p.l),s,v);
+  ui.set(p.k,{render(val){s.value=optOf(p,val)[0];v.textContent=S.known.has(p.k)?"":"—"}});
+  return box;
+}
+function makeVList(p){
+  const vl=el("div",{class:"vl",role:"radiogroup","aria-label":p.l});
+  const bs=p.o.map(([val,t])=>{const b=el("button",{type:"button",role:"radio","aria-checked":"false","aria-pressed":"false",onclick:()=>setVal(p,val,{send:true,force:true})},el("i"),t);vl.append(b);return b});
+  const box=el("div",{class:"ctl vlc",title:`${p.l} · CC ${p.cc}`},el("div",{class:"lbl"},p.l),vl,el("div",{class:"v"}));
+  ui.set(p.k,{render(val){const cur=optOf(p,val)[0];bs.forEach((b,i)=>{const on=p.o[i][0]===cur&&S.known.has(p.k);b.setAttribute("aria-pressed",on?"true":"false");b.setAttribute("aria-checked",on?"true":"false")})}});
+  return box;
+}
+const makeCtl=p=>p.t==="s"?makeSwitch(p):p.t==="l"?makeList(p):p.t==="v"?makeVList(p):makeKnob(p);
+// grafici degli inviluppi Filter e Volume
+const graphs=[];
+function envGraph(i){
+  const ns="http://www.w3.org/2000/svg",s=document.createElementNS(ns,"svg");s.setAttribute("viewBox","0 0 170 48");s.setAttribute("class","scr");s.style.width="170px";s.style.height="48px";
+  s.innerHTML=`<path class="fill"/><path class="ln"/>`;
+  graphs.push(()=>{const b=i?28:23,v=n=>S.vals["cc"+n]||0,k=34/127,H=44,T=4;
+    const x1=2+v(b)*k,x2=x1+v(b+1)*k,x3=x2+30,x4=x3+v(b+3)*k,ys=T+(H-T)*(1-v(b+2)/127);
+    const d=`M2 ${H} L${x1.toFixed(1)} ${T} L${x2.toFixed(1)} ${ys.toFixed(1)} L${x3.toFixed(1)} ${ys.toFixed(1)} L${x4.toFixed(1)} ${H}`;
+    s.querySelector(".ln").setAttribute("d",d);s.querySelector(".fill").setAttribute("d",d+" Z")});
+  return s;
+}
+function buildPanel(){
+  const panel=$("#panel");
+  for(const s of SECTIONS){
+    const sec=el("section",{class:"sec","data-tab":s.tab,id:"sec-"+s.id},el("h2",{},s.t));
+    let row=null,grp;
+    for(const p of P.filter(p=>p.sec===s.id)){
+      if(p.g!==grp||!row){grp=p.g;row=el("div",{class:"row"});if(p.g)row.append(el("div",{class:"sub"},p.g));sec.append(row);if(p.eg!=null)row.append(envGraph(p.eg))}
+      row.append(makeCtl(p));
+    }
+    panel.append(sec);
+  }
+  const tabs=$("#tabs");
+  TABS.forEach(([id,t],i)=>tabs.append(el("button",{type:"button","aria-pressed":i===0?"true":"false","data-t":id,onclick:()=>showTab(id)},t)));
+  showTab("mod");
+}
+function showTab(id){
+  document.querySelectorAll("[data-tab]").forEach(e=>e.classList.toggle("show",e.dataset.tab===id));
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===id?"true":"false"));
+}
+
+/* ============ VALORI ============ */
+function setVal(p,v,{send=false,quiet=false,force=false,learn=true}={}){
+  v=Math.max(p.min,Math.min(p.max,Math.round(v)));
+  if(learn)S.known.add(p.k);
+  if(S.vals[p.k]===v&&!force){ui.get(p.k).render(v);return}
+  S.vals[p.k]=v;
+  ui.get(p.k).render(v);
+  if(p.eg!=null)graphs.forEach(f=>f());
+  if(!quiet){const sec=SECTIONS.find(s=>s.id===p.sec);$("#lcdParam").textContent=(sec?sec.t+" › ":"")+(p.g?p.g+" › ":"")+p.l;$("#lcdVal").textContent=fmt(p,v)}
+  if(send)queueSend(p,v);
+}
+function loadDefaults(){P.forEach(p=>setVal(p,p.d,{quiet:true,force:true,learn:false}))}
+// messaggi CC per un valore
+function ccMsgs(p,v){
+  const st=0xB0|S.ch;
+  if(p.hi)return [st,p.cc,(v>>7)&127,st,p.hi,v&127];
+  if(p.bpm){const bpm=v/10,co=Math.min(127,Math.floor(bpm/3)),fi=Math.max(0,Math.min(127,Math.round((bpm-co*3)*10)));return [st,p.cc,co,st,p.bpm,fi]}
+  return [st,p.cc,v&127];
+}
+
+/* ============ MIDI ============ */
+const HOST=(()=>{try{return window.parent!==window&&window.parent.CekkMIDI||null}catch(e){return null}})();
+function bindHost(){
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
+  const p=HOST.ports("phatty");S.access=HOST.access;S.in=p.in;S.out=p.out;S.ch=p.ch;$("#selCh").value=p.ch;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
+  if(S.in&&S.out)log(`Porte dalla app: IN «${S.in.name}» · OUT «${S.out.name}» · canale ${S.ch+1}`);
+}
+async function connect(){
+  if(!navigator.requestMIDIAccess){toast("Questo browser non supporta Web MIDI. Usa Chrome o Edge (anche Chrome su Android).");return}
+  try{S.access=await navigator.requestMIDIAccess({sysex:true});log("Accesso MIDI con SysEx concesso.")}
+  catch(e){try{S.access=await navigator.requestMIDIAccess();log("SysEx negato: funzionano i parametri, non i dump.");toast("Permesso SysEx negato: i dump dei preset non funzioneranno.")}catch(e2){toast("Accesso MIDI negato dal browser.");return}}
+  S.access.onstatechange=fillPorts;fillPorts();
+}
+function fillPorts(){
+  const si=$("#selIn"),so=$("#selOut");const keepI=si.value,keepO=so.value;
+  si.innerHTML="";so.innerHTML="";
+  const ins=[...S.access.inputs.values()],outs=[...S.access.outputs.values()];
+  si.append(el("option",{value:""},ins.length?"—":"Nessun ingresso"));so.append(el("option",{value:""},outs.length?"—":"Nessuna uscita"));
+  ins.forEach(p=>si.append(el("option",{value:p.id},p.name)));outs.forEach(p=>so.append(el("option",{value:p.id},p.name)));
+  const pick=(list,keep)=>keep&&list.find(p=>p.id===keep)?keep:(list.find(p=>/phatty|moog/i.test(p.name))||list[0]||{}).id||"";
+  si.value=pick(ins,keepI);so.value=pick(outs,keepO);bindPorts();
+}
+function bindPorts(){
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
+  S.in=S.access&&$("#selIn").value?S.access.inputs.get($("#selIn").value):null;
+  S.out=S.access&&$("#selOut").value?S.access.outputs.get($("#selOut").value):null;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
+  const ok=!!(S.in&&S.out);
+  $("#dotLink").classList.toggle("on",ok);$("#txtLink").textContent=ok?S.out.name:"Scegli ingresso e uscita";
+  if(ok)log(`Porte: IN «${S.in.name}» · OUT «${S.out.name}»`);
+}
+let actT=0;function blink(){$("#dotAct").classList.add("act");clearTimeout(actT);actT=setTimeout(()=>$("#dotAct").classList.remove("act"),90)}
+function send(bytes){if(!S.out){toast("Nessuna uscita MIDI selezionata.");return false}try{S.out.send(bytes);blink();return true}catch(e){log("Errore invio: "+e.message);return false}}
+function queueSend(p,v){S.pending.set(p,v);if(!S.raf)S.raf=requestAnimationFrame(flush)}
+function flush(){S.raf=0;if(!S.out){S.pending.clear();return}const b=[];for(const [p,v] of S.pending)b.push(...ccMsgs(p,v));S.pending.clear();if(b.length)send(b)}
+
+function onMidi(ev){
+  const d=ev.data;
+  if(d[0]===0xF0){blink();onSysex(d);return}
+  if(d[0]>=0xF8)return;
+  blink();
+  const st=d[0]&0xF0;
+  if(st===0xB0){
+    const cc=d[1],v=d[2];
+    if($("#chkVerbose").checked)log(`CC ${cc} = ${v} (canale ${(d[0]&15)+1})`);
+    if(cc===51){const p=byCC.get(19);S.rx.cutLo=v;setVal(p,((S.rx.cutHi??(S.vals[p.k]>>7))<<7)|v);return}
+    if(cc===36){const p=byCC.get(4);S.rx.fine=v;const co=S.rx.coarse??Math.floor(S.vals[p.k]/30);setVal(p,co*30+v);return}
+    const p=byCC.get(cc);if(!p)return;
+    if(p.hi){S.rx.cutHi=v;S.rx.cutLo=0;setVal(p,v<<7);return}
+    if(p.bpm){S.rx.coarse=v;S.rx.fine=0;setVal(p,v*30);return}
+    setVal(p,v);
+  } else if(st===0xC0){$("#selProg").value=d[1];$("#lcdName").textContent="Preset "+d[1];log(`Program Change ricevuto: preset ${d[1]}`)}
+}
+// i dump SysEx arrivano quando li manda il synth; i messaggi vicini nel tempo formano un solo dump
+function onSysex(d){
+  if(d[1]===0x7E&&d[3]===0x06&&d[4]===0x02){log(`Device Inquiry: ${hex(d.slice(5,d.length-1))}`);toast(d[5]===0x04?"Strumento Moog riconosciuto":"Risposta da uno strumento non Moog");return}
+  const now=Date.now();
+  if(!S.cur||now-S.curT>1500){S.cur={msgs:[],date:new Date()};S.dumps.unshift(S.cur)}
+  S.cur.msgs.push(Array.from(d));S.curT=now;
+  clearTimeout(S.dumpT);S.dumpT=setTimeout(()=>{const c=S.cur;S.lastDump=c.msgs.flat();const n=c.msgs.length,b=S.lastDump.length;
+    c.name=`Dump ${c.date.toLocaleTimeString().slice(0,5)}`;
+    log(`Dump SysEx ricevuto: ${n} messaggi, ${b} byte. Inizio: ${hex(c.msgs[0].slice(0,12))}`);toast(`Dump ricevuto (${b} byte): salvalo dalla libreria`);renderDumps()},400);
+}
+
+/* ============ LIBRERIA ============ */
+const LS="phatty-library-v1";
+const b64=a=>btoa(String.fromCharCode(...a));
+const unb64=s=>Array.from(atob(s),c=>c.charCodeAt(0));
+function saveLib(){try{localStorage.setItem(LS,JSON.stringify({panels:S.lib,dumps:S.dumps.filter(x=>x.saved).map(x=>({name:x.name,date:x.date,data:b64(x.msgs.flat())}))}))}catch(e){log("Salvataggio nel browser non riuscito: "+e.message)}}
+function loadLib(){try{const r=JSON.parse(localStorage.getItem(LS)||"{}");S.lib=r.panels||[];S.dumps=(r.dumps||[]).map(x=>({name:x.name,date:new Date(x.date),msgs:splitSyx(unb64(x.data)),saved:true}))}catch(e){S.lib=[];S.dumps=[]}}
+function splitSyx(bytes){const out=[];let i=0;while(i<bytes.length){if(bytes[i]!==0xF0){i++;continue}let j=i+1;while(j<bytes.length&&bytes[j]!==0xF7&&bytes[j]!==0xF0)j++;if(bytes[j]===0xF7)out.push(Array.from(bytes.slice(i,j+1)));i=bytes[j]===0xF7?j+1:j}return out}
+function panelState(){const v={};P.forEach(p=>{if(S.known.has(p.k))v[p.k]=S.vals[p.k]});return v}
+function renderPanels(){
+  const L=$("#panList");L.innerHTML="";
+  if(!S.lib.length){L.append(el("div",{class:"empty"},"Nessun pannello salvato. Regola il suono e premi «Salva pannello in libreria»."));return}
+  S.lib.forEach((x,i)=>L.append(el("div",{class:"item"},el("div",{class:"n"},String(i+1).padStart(3,"0")),
+    el("div",{class:"nm"},x.name,el("small",{},`${Object.keys(x.vals).length} parametri · ${x.date}`)),
+    el("div",{class:"acts"},
+      el("button",{type:"button",title:"Carica nel pannello e invia al synth (non scrive nella memoria)",onclick:()=>applyPanel(x)},"Invia"),
+      el("button",{type:"button",onclick:()=>renameItem(x,renderPanels)},"Rinomina"),
+      el("button",{type:"button",title:"Sposta su",onclick:()=>{if(i>0){[S.lib[i-1],S.lib[i]]=[S.lib[i],S.lib[i-1]];saveLib();renderPanels()}}},"↑"),
+      el("button",{type:"button",class:"danger",onclick:()=>{S.lib.splice(i,1);saveLib();renderPanels()}},"✕")))));
+}
+function renderDumps(){
+  const L=$("#dumpList");L.innerHTML="";
+  if(!S.dumps.length){L.append(el("div",{class:"empty"},"Nessun dump. Sul synth: MASTER › SYSEX › «Send Current Preset» (o «Send All Presets») con l'editor aperto."));return}
+  S.dumps.forEach((x,i)=>{const bytes=x.msgs.reduce((a,m)=>a+m.length,0);
+    L.append(el("div",{class:"item"},el("div",{class:"n"},String(i+1).padStart(3,"0")),
+      el("div",{class:"nm"},(x.name||"Dump in arrivo…")+(x.saved?"":" · non salvato"),el("small",{},`${x.msgs.length} messaggi · ${bytes} byte · ${x.date.toLocaleString().slice(0,17)}`)),
+      el("div",{class:"acts"},
+        x.saved?null:el("button",{type:"button",class:"primary",onclick:()=>{x.saved=true;saveLib();renderDumps()}},"Salva"),
+        el("button",{type:"button",title:"Rimanda il dump al synth",onclick:()=>askSendDump(x)},"Invia"),
+        el("button",{type:"button",onclick:()=>renameItem(x,()=>{saveLib();renderDumps()})},"Rinomina"),
+        el("button",{type:"button",onclick:()=>download(x.msgs.flat(),safe(x.name||"dump")+".syx")},".syx"),
+        el("button",{type:"button",class:"danger",onclick:()=>{S.dumps.splice(i,1);saveLib();renderDumps()}},"✕"))))});
+}
+function applyPanel(x){
+  const b=[];for(const [k,v] of Object.entries(x.vals)){const p=P.find(q=>q.k===k);if(!p)continue;setVal(p,v,{quiet:true,force:true});b.push(...ccMsgs(p,v))}
+  $("#lcdName").textContent=x.name;
+  if(b.length&&send(b)){toast(`«${x.name}» inviato al synth`);log(`Pannello «${x.name}» inviato: ${Object.keys(x.vals).length} parametri`)}
+}
+function renameItem(x,after){
+  const box=$("#confirmBox");box.innerHTML="";
+  const inp=el("input",{type:"text",value:x.name||"",maxlength:"24"});
+  box.append(el("div",{class:"confirm",style:"border-color:#3a3b3e;background:#232325"},"Nuovo nome:",inp,
+    el("button",{type:"button",class:"primary",onclick:()=>{x.name=inp.value.trim()||x.name;saveLib();after();box.innerHTML=""}},"OK"),
+    el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));inp.focus();inp.select();
+}
+function confirmBox(msg,onYes){
+  const box=$("#confirmBox");box.innerHTML="";
+  box.append(el("div",{class:"confirm"},el("span",{style:"flex:1 1 240px"},msg),
+    el("button",{type:"button",class:"primary",onclick:()=>{box.innerHTML="";onYes()}},"Conferma"),
+    el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));
+  box.scrollIntoView({block:"nearest"});
+}
+function askSendDump(x){
+  const many=x.msgs.length>1;
+  confirmBox(`Inviare «${x.name}» al synth? Se è un preset singolo, il Little Phatty lo scrive subito nel preset selezionato sul synth; se è un banco («Send All Presets»), sostituisce TUTTI i preset.`,
+    async()=>{for(const m of x.msgs){if(!send(m))return;await new Promise(r=>setTimeout(r,many?60:0))}toast("Dump inviato");log(`Dump «${x.name}» inviato (${x.msgs.length} messaggi)`)});
+}
+async function importFiles(files){
+  let n=0;
+  for(const f of files){
+    const bytes=new Uint8Array(await f.arrayBuffer());
+    if(/\.json$/i.test(f.name)){try{const r=JSON.parse(new TextDecoder().decode(bytes));(r.panels||[]).forEach(x=>S.lib.push(x));(r.dumps||[]).forEach(x=>S.dumps.push({name:x.name,date:new Date(x.date),msgs:splitSyx(unb64(x.data)),saved:true}));n+=(r.panels||[]).length+(r.dumps||[]).length}catch(e){toast("Backup non valido.")}continue}
+    const msgs=splitSyx(bytes).filter(m=>m[1]!==0x7E&&m[1]!==0x7F);
+    if(msgs.length){S.dumps.push({name:f.name.replace(/\.syx$/i,""),date:new Date(),msgs,saved:true});n++}
+  }
+  saveLib();renderPanels();renderDumps();toast(n?`Importati ${n} elementi`:"Nessun dato SysEx trovato nel file.");
+}
+function download(bytes,name,type="application/octet-stream"){const blob=new Blob([new Uint8Array(bytes)],{type});const a=el("a",{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+const safe=s=>s.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"dump";
+
+/* ============ LOG E UTILITÀ ============ */
+const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+function log(m){const L=$("#log");const t=new Date().toTimeString().slice(0,8);L.textContent+=`[${t}] ${m}\n`;L.scrollTop=L.scrollHeight}
+let toastT=0;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+function snap(w){if(!S.lastDump){toast("Prima manda un preset dal synth (MASTER › SYSEX).");return}S[w]=S.lastDump.slice();log(`Istantanea ${w==="snapA"?"A":"B"} salvata (${S[w].length} byte).`)}
+function diff(){const a=S.snapA,b=S.snapB;if(!a||!b){toast("Servono entrambe le istantanee.");return}const ch=[];for(let i=0;i<Math.max(a.length,b.length);i++)if(a[i]!==b[i])ch.push(i);
+  if(!ch.length){log("Nessuna differenza tra A e B.");return}log(`Byte cambiati (${ch.length}): `+ch.slice(0,60).map(i=>`#${i}: ${a[i]}→${b[i]}`).join(", ")+(ch.length>60?" …":""))}
+
+/* ============ AVVIO ============ */
+function init(){
+  const ch=$("#selCh");for(let i=1;i<=16;i++)ch.append(el("option",{value:i-1},String(i)));ch.addEventListener("change",()=>S.ch=+ch.value);
+  const sp=$("#selProg");for(let n=0;n<100;n++)sp.append(el("option",{value:n},String(n).padStart(2,"0")));
+  buildPanel();loadDefaults();graphs.forEach(f=>f());loadLib();renderPanels();renderDumps();
+  $("#btnConnect").onclick=connect;$("#selIn").onchange=bindPorts;$("#selOut").onchange=bindPorts;
+  $("#btnPC").onclick=()=>{const n=+sp.value;if(send([0xC0|S.ch,n])){$("#lcdName").textContent="Preset "+String(n).padStart(2,"0");S.known.clear();P.forEach(p=>ui.get(p.k).render(S.vals[p.k]));$("#lcdInfo").textContent="Preset richiamato: gira le manopole sul synth per vederne i valori"}};
+  $("#btnSendPanel").onclick=()=>{const b=[];P.forEach(p=>{if(S.known.has(p.k))b.push(...ccMsgs(p,S.vals[p.k]))});if(!b.length){toast("Nessun valore da inviare: regola prima qualche parametro.");return}if(send(b))toast("Pannello inviato al synth")};
+  $("#btnSavePanel").onclick=()=>{const v=panelState();if(!Object.keys(v).length){toast("Nessun valore noto: regola prima qualche parametro.");return}const name="Pannello "+new Date().toLocaleString().slice(0,17);S.lib.push({name,vals:v,date:new Date().toISOString().slice(0,10)});saveLib();renderPanels();toast(`«${name}» salvato`)};
+  $("#btnImport").onclick=()=>$("#fileIn").click();
+  $("#fileIn").onchange=e=>{importFiles([...e.target.files]);e.target.value=""};
+  $("#btnExportJson").onclick=()=>download(new TextEncoder().encode(JSON.stringify({panels:S.lib,dumps:S.dumps.filter(x=>x.saved).map(x=>({name:x.name,date:x.date,data:b64(x.msgs.flat())}))})),"LittlePhatty_libreria_backup.json","application/json");
+  $("#btnClear").onclick=()=>{const n=S.lib.length+S.dumps.length;if(!n)return;confirmBox(`Eliminare tutti i ${n} elementi della libreria da questo browser?`,()=>{S.lib=[];S.dumps=[];saveLib();renderPanels();renderDumps()})};
+  $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
+  $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
+  if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
+    if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
+  log("Editor pronto. Sul Little Phatty, MASTER › MIDI SETUP: ingresso e uscita USB (o DIN/USB), canali uguali a quello scelto qui. Il synth non comunica i valori del preset: il pannello li impara quando giri le manopole.");
+  if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
+}
+init();
+</script>
+</body>
+</html>

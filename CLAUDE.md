@@ -4,7 +4,7 @@
 Editor/librarian MIDI nel browser (Web MIDI API, con SysEx) per i sintetizzatori di Francesco:
 - **Sequential Take 5** — prima versione fatta: `take5/index.html`
 - **Korg microKORG XL** — prima versione fatta: `mkxl/index.html`
-- **Moog Little Phatty** — da fare
+- **Moog Little Phatty** — prima versione fatta: `phatty/index.html`
 
 Ogni editor deve:
 - vedere lo strumento via USB MIDI e modificarne i parametri in tempo reale;
@@ -33,7 +33,7 @@ Ogni editor deve:
   - **microKORG XL** (fatto): corpo nero, fascia frontale in alluminio spazzolato, due manopole grandi nere (Genre / Category), display ambra #f7a531,
     piccole manopole a destra, 37 mini tasti, presa microfono al centro. Gli editor di riferimento mostrano: pagina Program con lista dei 128 programmi
     (A11-B88) su più colonne in carattere da display; pagina Timbre con forme d'onda e curve EG/filtro disegnate su sfondo nero; Virtual Patch a 6 righe.
-  - **Little Phatty** (da fare): pannello nero con fiancate grigie, intestazioni di sezione su fascia sottile (Modulation, Oscillators, Filter,
+  - **Little Phatty** (fatto): pannello nero con fiancate grigie, intestazioni di sezione su fascia sottile (Modulation, Oscillators, Filter,
     Envelope Generators, Output), quattro manopole grandi con anello di LED arancioni, tasti arrotondati grigio-blu #4c5763 che si accendono
     arancio o rosso, display LCD grigio chiaro, ruote illuminate arancio. Gli editor di riferimento hanno grafici degli inviluppi Amp/Filter e selettori a lista verticale (Source, Destination, Octave, Filter Poles).
 - Conferma dentro la pagina prima di qualunque scrittura nella memoria dello strumento.
@@ -109,6 +109,12 @@ Ogni editor deve:
   Send All Presets, Bulk Dump) e il synth li riceve sempre: un preset singolo viene **scritto subito nella posizione corrente** (attenzione: sovrascrive),
   un banco sostituisce tutti i preset. L'editor quindi: riceve e salva i .syx inviati dal synth, li rimanda con conferma, e legge i valori del pannello dai CC.
   La mappatura byte→parametro del dump va ricavata col Laboratorio, se serve.
+
+## Punti aperti sul Little Phatty (editor `phatty/index.html`)
+- Il synth non dice i valori del preset: il pannello mostra «—» finché un parametro non viene mosso (dall'editor o dal synth). `S.known` tiene traccia di quelli noti.
+- Libreria a due parti: «Pannelli» (valori CC noti, rimandati come CC senza toccare la memoria) e «Dump SysEx» ricevuti dal synth
+  (messaggi che arrivano entro 1,5 s uno dall'altro = un dump), rimandati tali e quali con conferma.
+- Da verificare: lunghezza e struttura dei dump (preset singolo vs banco), scala reale di Bend Up/Down (0-127 nella tabella), nome della porta USB.
 
 ## Come si lavora
 Claude non può collegarsi agli strumenti: Francesco prova, riporta il log del Laboratorio o il comportamento, e si corregge a iterazioni. Mantenere compatibilità con i file .syx e con i backup .json già esportati.
