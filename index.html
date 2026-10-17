@@ -369,7 +369,7 @@ async function init(){
   const last=localStorage.getItem("cekk-last");const li=SYNTHS.findIndex(s=>s.id===last);if(li>0)requestAnimationFrame(()=>{$("#car").children[li].scrollIntoView({inline:"center",block:"nearest"})});
   const h=location.hash.slice(1);const hs=SYNTHS.find(s=>s.id===h&&s.ready);
   if(hs){history.replaceState(null,"",location.pathname);openEditor(hs)}
-  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 }
 init();
 </script>
