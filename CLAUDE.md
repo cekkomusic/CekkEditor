@@ -38,7 +38,14 @@ Ogni editor deve:
 - Formato dei valori bipolari (centro 127?) e del Noise (centro 64?) da confermare.
 
 ## microKORG XL — dati chiave (da Owner's Manual, `docs/Microkorg xl manual.pdf`, pp. 28-29, 59-62, 80-93)
-- Il manuale d'uso NON contiene il formato dei dati SysEx: rimanda alla «MIDI Implementation» separata sul sito Korg. Da procurare.
+- **Formato SysEx completo in `docs/microKORG_XL_MIDIimp.txt`** (MIDI Implementation rev. 1.01, 2009): mappa byte per byte del programma (TABLE 1-6) e dei globali (TABLE 7).
+  - Header `F0 42 3g 7E` (g = canale globale). Richieste: `10` edit buffer, `1C pp 00` programma pp (0-127), `0E` globali, `11 pp 00` scrivi l'edit buffer nel programma pp.
+  - Risposte/dump: `40` edit buffer, `4C pp 00` programma, `51` globali. Esiti: `23` caricato, `24` errore (es. protect), `26` formato errato, `21`/`22` scrittura ok/errore.
+  - Parameter Change `41 pp PP qq QQ vv VV` (ID, Sub ID, valore 14 bit con segno; ID:SubID nelle tabelle). Il synth lo invia quando si muovono manopole/tasti → serve per aggiornare il pannello.
+  - Device Inquiry: risposta `F0 7E 0g 06 02 42 7E 00 00 00 …`. Esiste anche Search Device `F0 42 50 00 dd F7`.
+  - Dati compressi 7→8 come il Take 5 (primo byte = bit 7 dei 7 successivi, bit0 = primo byte).
+  - Programma: 0-7 nome ASCII, 16-111 Timbre 1, 112-207 Timbre 2, 208-285 Vocoder, 286-333 FX, 334-335 tempo, 336 Arp on/key sync, 338-345 Arp.
+  - Da verificare: la NOTE 1 dice 342 byte (391 compressi) ma la TABLE 1 arriva al byte 345; il manuale d'uso dice 402 byte per «1 Prog». Controllare con un dump reale.
 - SysEx: header `F0 42 3n 7E` (n = canale globale 0-F), poi function ID. Supportati anche Master Volume `F0 7F nn 04 01 vv mm F7` e Master Fine Tune `F0 7F nn 04 03 vv mm F7`.
 - Dimensioni dump: 1 programma 402 byte, tutti i programmi 51.712 byte, global 121 byte. Ricezione dump solo con GLOBAL «PROTECT» = OFF e MIDI FLT «SYS EX» = ENABLE.
 - Programmi: 128 (A11-B88), Bank Select CC0=0 CC32=0 + Program Change 0-127. CC0=32/CC32=32|33 + PC = carica un timbro di un altro programma nel Timbre 1|2.
