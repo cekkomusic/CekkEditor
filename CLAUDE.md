@@ -57,7 +57,10 @@ Ogni editor deve:
 ## Punti aperti sul Take 5
 - **Mappatura byte del dump → parametri non documentata.** L'editor ipotizza "indice byte = numero NRPN" (cutoff = byte 29 LSB + 30 MSB) e la scarta se più di 4 valori escono di scala. Va verificata con il Laboratorio (istantanea A/B + confronta).
 - Posizione del nome del programma nel dump: per ora stimata cercando la prima stringa ASCII.
-- Il documento MIDI è più vecchio del firmware: tipi FX (12 nel manuale, NRPN 0-8), modi arpeggio (5 vs 0-2), destinazioni modulazione oltre 54, NRPN 67 e 74 (ipotesi: destinazioni LFO).
+- Chiarito con la User's Guide 2.3 (`docs/Take-5-Users-Guide-v2_3.pdf`): 12 tipi di effetto (Stereo Delay…Lo-Fi, ordine e nomi delle 3 manopole come nell'editor),
+  5 modi arpeggio (Up, Down, Up+Down, Random, Assign), 20 sorgenti e 58 destinazioni di modulazione (0-57, appendici A/B), forme LFO Tri/Saw/RevSaw/Square/S&H,
+  Noise bipolare (sinistra rosa, destra bianco). Le destinazioni LFO esistono (p. 32): NRPN 67 e 74 restano dedotti, da verificare.
+- Sequencer (guida p. 47): 64 step, accordi fino a 5 note, velocity, legature e pause, salvato col programma. Via MIDI solo Play/Record (NRPN 4198/4199).
 - Formato dei valori bipolari (centro 127?) e del Noise (centro 64?) da confermare.
 
 ## microKORG XL — dati chiave (da Owner's Manual, `docs/Microkorg xl manual.pdf`, pp. 28-29, 59-62, 80-93)

@@ -42,7 +42,7 @@ Generato dagli editor: chiave, parametro, valori ammessi e, per le liste, il sig
 | `45` | Envelopes › Env 1 › Release | 0–127 |  |
 | `46` | Envelopes › Env 1 › Amount | 0–255 (centro 127) |  |
 | `47` | Envelopes › Env 1 › Velocity | 0/1 |  |
-| `40` | Envelopes › Env 1 › Aux Dest | 0–54 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt |
+| `40` | Envelopes › Env 1 › Aux Dest | 0–57 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt, 55=Mod15 Amt, 56=Mod16 Amt, 57=Vintage Amt |
 | `48` | Envelopes › Env 2 › Delay | 0–127 |  |
 | `49` | Envelopes › Env 2 › Attack | 0–127 |  |
 | `50` | Envelopes › Env 2 › Decay | 0–127 |  |
@@ -57,14 +57,14 @@ Generato dagli editor: chiave, parametro, valori ammessi e, per le liste, il sig
 | `64` | LFO 1: Global › Clk Sync | 0/1 |  |
 | `65` | LFO 1: Global › Sync Rate | 0–15 |  |
 | `66` | LFO 1: Global › Reset | 0/1 |  |
-| `67` | LFO 1: Global › Dest * | 0–54 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt |
+| `67` | LFO 1: Global › Dest * | 0–57 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt, 55=Mod15 Amt, 56=Mod16 Amt, 57=Vintage Amt |
 | `68` | LFO 2: Per Voice › Freq | 0–127 |  |
 | `69` | LFO 2: Per Voice › Amount | 0–255 (centro 127) |  |
 | `70` | LFO 2: Per Voice › Shape | 0–4 | 0=Triangolo, 1=Dente sega, 2=Sega inv., 3=Quadra, 4=S&H |
 | `71` | LFO 2: Per Voice › Clk Sync | 0/1 |  |
 | `72` | LFO 2: Per Voice › Sync Rate | 0–15 |  |
 | `73` | LFO 2: Per Voice › Reset | 0/1 |  |
-| `74` | LFO 2: Per Voice › Dest * | 0–54 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt |
+| `74` | LFO 2: Per Voice › Dest * | 0–57 | 0=Nessuna, 1=Osc1 Octave, 2=Osc2 Octave, 3=Osc1 Fine, 4=Osc2 Fine, 5=Osc All Fine, 6=Osc1 Shape, 7=Osc2 Shape, 8=Osc All Shape, 9=Osc1 Level, 10=Osc2 Level, 11=Osc FM Level, 12=Sub Level, 13=Noise, 14=Drive, 15=Cutoff, 16=Resonance, 17=Overdrive, 18=Panning, 19=FX Mix, 20=FX Time, 21=FX Misc, 22=Reverb Mix, 23=Reverb Size, 24=Reverb PreDelay, 25=Reverb Decay, 26=Reverb Tone, 27=LFO1 Freq, 28=LFO2 Freq, 29=LFO All Freq, 30=LFO1 Amt, 31=LFO2 Amt, 32=LFO All Amt, 33=Env1 Amt, 34=Env2 Amt, 35=Env1 Attack, 36=Env2 Attack, 37=Env1 Decay, 38=Env2 Decay, 39=Env1 Release, 40=Env2 Release, 41=Mod1 Amt, 42=Mod2 Amt, 43=Mod3 Amt, 44=Mod4 Amt, 45=Mod5 Amt, 46=Mod6 Amt, 47=Mod7 Amt, 48=Mod8 Amt, 49=Mod9 Amt, 50=Mod10 Amt, 51=Mod11 Amt, 52=Mod12 Amt, 53=Mod13 Amt, 54=Mod14 Amt, 55=Mod15 Amt, 56=Mod16 Amt, 57=Vintage Amt |
 | `16` | Effect › FX On | 0/1 |  |
 | `17` | Effect › Type | 0–11 | 0=Stereo Delay, 1=BBD, 2=Tape Delay 1, 3=Tape Delay 2, 4=Chorus, 5=Flanger, 6=Phaser, 7=HP Filter, 8=Distortion, 9=Ring Mod, 10=Rotating Speaker, 11=Lo-Fi |
 | `19` | Effect › Time | 0–127 |  |
@@ -95,52 +95,52 @@ Generato dagli editor: chiave, parametro, valori ammessi e, per le liste, il sig
 | `4199` | Step Seq › Record | 0/1 |  |
 | `77` | Mod Matrix › Src 1 | 0–19 |  |
 | `93` | Mod Matrix › Amt 1 | 0–255 (centro 127) |  |
-| `109` | Mod Matrix › Dst 1 | 0–54 |  |
+| `109` | Mod Matrix › Dst 1 | 0–57 |  |
 | `78` | Mod Matrix › Src 2 | 0–19 |  |
 | `94` | Mod Matrix › Amt 2 | 0–255 (centro 127) |  |
-| `110` | Mod Matrix › Dst 2 | 0–54 |  |
+| `110` | Mod Matrix › Dst 2 | 0–57 |  |
 | `79` | Mod Matrix › Src 3 | 0–19 |  |
 | `95` | Mod Matrix › Amt 3 | 0–255 (centro 127) |  |
-| `111` | Mod Matrix › Dst 3 | 0–54 |  |
+| `111` | Mod Matrix › Dst 3 | 0–57 |  |
 | `80` | Mod Matrix › Src 4 | 0–19 |  |
 | `96` | Mod Matrix › Amt 4 | 0–255 (centro 127) |  |
-| `112` | Mod Matrix › Dst 4 | 0–54 |  |
+| `112` | Mod Matrix › Dst 4 | 0–57 |  |
 | `81` | Mod Matrix › Src 5 | 0–19 |  |
 | `97` | Mod Matrix › Amt 5 | 0–255 (centro 127) |  |
-| `113` | Mod Matrix › Dst 5 | 0–54 |  |
+| `113` | Mod Matrix › Dst 5 | 0–57 |  |
 | `82` | Mod Matrix › Src 6 | 0–19 |  |
 | `98` | Mod Matrix › Amt 6 | 0–255 (centro 127) |  |
-| `114` | Mod Matrix › Dst 6 | 0–54 |  |
+| `114` | Mod Matrix › Dst 6 | 0–57 |  |
 | `83` | Mod Matrix › Src 7 | 0–19 |  |
 | `99` | Mod Matrix › Amt 7 | 0–255 (centro 127) |  |
-| `115` | Mod Matrix › Dst 7 | 0–54 |  |
+| `115` | Mod Matrix › Dst 7 | 0–57 |  |
 | `84` | Mod Matrix › Src 8 | 0–19 |  |
 | `100` | Mod Matrix › Amt 8 | 0–255 (centro 127) |  |
-| `116` | Mod Matrix › Dst 8 | 0–54 |  |
+| `116` | Mod Matrix › Dst 8 | 0–57 |  |
 | `85` | Mod Matrix › Src 9 | 0–19 |  |
 | `101` | Mod Matrix › Amt 9 | 0–255 (centro 127) |  |
-| `117` | Mod Matrix › Dst 9 | 0–54 |  |
+| `117` | Mod Matrix › Dst 9 | 0–57 |  |
 | `86` | Mod Matrix › Src 10 | 0–19 |  |
 | `102` | Mod Matrix › Amt 10 | 0–255 (centro 127) |  |
-| `118` | Mod Matrix › Dst 10 | 0–54 |  |
+| `118` | Mod Matrix › Dst 10 | 0–57 |  |
 | `87` | Mod Matrix › Src 11 | 0–19 |  |
 | `103` | Mod Matrix › Amt 11 | 0–255 (centro 127) |  |
-| `119` | Mod Matrix › Dst 11 | 0–54 |  |
+| `119` | Mod Matrix › Dst 11 | 0–57 |  |
 | `88` | Mod Matrix › Src 12 | 0–19 |  |
 | `104` | Mod Matrix › Amt 12 | 0–255 (centro 127) |  |
-| `120` | Mod Matrix › Dst 12 | 0–54 |  |
+| `120` | Mod Matrix › Dst 12 | 0–57 |  |
 | `89` | Mod Matrix › Src 13 | 0–19 |  |
 | `105` | Mod Matrix › Amt 13 | 0–255 (centro 127) |  |
-| `121` | Mod Matrix › Dst 13 | 0–54 |  |
+| `121` | Mod Matrix › Dst 13 | 0–57 |  |
 | `90` | Mod Matrix › Src 14 | 0–19 |  |
 | `106` | Mod Matrix › Amt 14 | 0–255 (centro 127) |  |
-| `122` | Mod Matrix › Dst 14 | 0–54 |  |
+| `122` | Mod Matrix › Dst 14 | 0–57 |  |
 | `91` | Mod Matrix › Src 15 | 0–19 |  |
 | `107` | Mod Matrix › Amt 15 | 0–255 (centro 127) |  |
-| `123` | Mod Matrix › Dst 15 | 0–54 |  |
+| `123` | Mod Matrix › Dst 15 | 0–57 |  |
 | `92` | Mod Matrix › Src 16 | 0–19 |  |
 | `108` | Mod Matrix › Amt 16 | 0–255 (centro 127) |  |
-| `124` | Mod Matrix › Dst 16 | 0–54 |  |
+| `124` | Mod Matrix › Dst 16 | 0–57 |  |
 
 ## microKORG XL (chiave = nome del parametro; t0 = Timbre 1, t1 = Timbre 2)
 

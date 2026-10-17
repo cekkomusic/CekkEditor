@@ -2,7 +2,7 @@
 
 ## Sequential Take 5
 - MIDI Implementation 1.2 nel repository: [`Take-5-MIDI-Implementation-1.2.pdf`](Take-5-MIDI-Implementation-1.2.pdf) — online: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf
-- User's Guide 2.3: https://sequential.com/wp-content/uploads/2026/01/Take-5-Users-Guide-v2_3.pdf
+- User's Guide 2.3 nel repository: [`Take-5-Users-Guide-v2_3.pdf`](Take-5-Users-Guide-v2_3.pdf) — online: https://sequential.com/wp-content/uploads/2026/01/Take-5-Users-Guide-v2_3.pdf
 
 ## Moog Little Phatty
 - Stage II User's Manual nel repository: [`Little_Phatty_StageII_Manual.pdf`](Little_Phatty_StageII_Manual.pdf) (SysEx p. 41-43, tabella CC p. 54-57, MIDI Chart p. 68)

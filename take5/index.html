@@ -278,7 +278,7 @@ const P=[
  {n:45, l:"Release",    max:127,d:30,sec:"env",g:"Env 1"},
  {n:46, l:"Amount",     max:255,d:170,f:bip(127),c:127,sec:"env",g:"Env 1"},
  {n:47, l:"Velocity",   t:"s",sec:"env",g:"Env 1"},
- {n:40, l:"Aux Dest",   t:"l",max:54,d:0,o:MOD_DST,sec:"env",g:"Env 1",w:1},
+ {n:40, l:"Aux Dest",   t:"l",max:57,d:0,o:MOD_DST,sec:"env",g:"Env 1",w:1},
  // Env 2
  {n:48, l:"Delay",      max:127,d:0,sec:"env",g:"Env 2"},
  {n:49, l:"Attack",     max:127,d:0,sec:"env",g:"Env 2"},
@@ -295,7 +295,7 @@ const P=[
  {n:64, l:"Clk Sync",   t:"s",sec:"lfo1"},
  {n:65, l:"Sync Rate",  max:15,d:6,sec:"lfo1"},
  {n:66, l:"Reset",      t:"s",sec:"lfo1"},
- {n:67, l:"Dest *",     t:"l",max:54,d:0,o:MOD_DST,sec:"lfo1",w:1,x:"NRPN 67 non documentato: ipotesi"},
+ {n:67, l:"Dest *",     t:"l",max:57,d:0,o:MOD_DST,sec:"lfo1",w:1,x:"la destinazione LFO esiste (User's Guide p. 32), il numero NRPN 67 è dedotto"},
  // LFO 2 (per voce)
  {n:68, l:"Freq",       max:127,d:60,sec:"lfo2"},
  {n:69, l:"Amount",     max:255,d:127,f:bip(127),c:127,sec:"lfo2"},
@@ -303,7 +303,7 @@ const P=[
  {n:71, l:"Clk Sync",   t:"s",sec:"lfo2"},
  {n:72, l:"Sync Rate",  max:15,d:6,sec:"lfo2"},
  {n:73, l:"Reset",      t:"s",sec:"lfo2"},
- {n:74, l:"Dest *",     t:"l",max:54,d:0,o:MOD_DST,sec:"lfo2",w:1,x:"NRPN 74 non documentato: ipotesi"},
+ {n:74, l:"Dest *",     t:"l",max:57,d:0,o:MOD_DST,sec:"lfo2",w:1,x:"la destinazione LFO esiste (User's Guide p. 32), il numero NRPN 74 è dedotto"},
  // Effetto
  {n:16, l:"FX On",      t:"s",sec:"fx"},
  {n:17, l:"Type",       t:"l",max:11,d:1,o:FX_TYPES,sec:"fx",w:1},
@@ -341,7 +341,7 @@ const P=[
 for(let i=0;i<16;i++){
   P.push({n:77+i, l:"Src "+(i+1), t:"m",max:19,d:0,sec:"mod",slot:i,part:"src"});
   P.push({n:93+i, l:"Amt "+(i+1), t:"m",max:255,d:127,sec:"mod",slot:i,part:"amt",c:127,f:bip(127)});
-  P.push({n:109+i,l:"Dst "+(i+1), t:"m",max:54,d:0,sec:"mod",slot:i,part:"dst"});
+  P.push({n:109+i,l:"Dst "+(i+1), t:"m",max:57,d:0,sec:"mod",slot:i,part:"dst"});
 }
 P.forEach(p=>{p.min=p.min||0;if(p.t==="s"){p.max=1;p.d=p.d||0}if(p.d==null)p.d=p.min;
   const opts=p.o||(p.part==="src"?MOD_SRC:p.part==="dst"?MOD_DST:null);p.hi=opts?Math.max(p.max,opts.length-1):p.max});
@@ -427,7 +427,7 @@ function makeMatrix(){
   for(let i=0;i<16;i++){
     const ps=byN.get(77+i),pa=byN.get(93+i),pd=byN.get(109+i);
     const ss=el("select",{id:"ms"+i,"aria-label":"Sorgente "+(i+1)});MOD_SRC.forEach((t,j)=>ss.append(el("option",{value:j},t)));
-    const ds=el("select",{id:"md"+i,"aria-label":"Destinazione "+(i+1)});MOD_DST.forEach((t,j)=>ds.append(el("option",{value:j},j>54?t+" ?":t)));
+    const ds=el("select",{id:"md"+i,"aria-label":"Destinazione "+(i+1)});MOD_DST.forEach((t,j)=>ds.append(el("option",{value:j},t)));
     const ar=el("input",{type:"range",min:0,max:255,id:"ma"+i,"aria-label":"Quantità "+(i+1)});
     const mv=el("div",{class:"mv"});
     ss.addEventListener("change",()=>setVal(ps,+ss.value,{send:true,force:true}));
