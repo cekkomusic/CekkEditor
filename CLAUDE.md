@@ -37,6 +37,8 @@ Ogni editor deve:
     Envelope Generators, Output), quattro manopole grandi con anello di LED arancioni, tasti arrotondati grigio-blu #4c5763 che si accendono
     arancio o rosso, display LCD grigio chiaro, ruote illuminate arancio. Gli editor di riferimento hanno grafici degli inviluppi Amp/Filter e selettori a lista verticale (Source, Destination, Octave, Filter Poles).
 - Conferma dentro la pagina prima di qualunque scrittura nella memoria dello strumento.
+- Librerie di Take 5 e microKORG XL: caselle di selezione (`S.sel`, non salvata). Export e scrittura multipla usano i suoni spuntati nell'ordine della lista:
+  Take 5 fino a 16 nelle posizioni 1… del banco scelto; microKORG XL in programmi consecutivi da «Dal programma».
 
 ## Take 5 — dati chiave (da "Take 5 MIDI Implementation 1.2" e User's Guide 2.x)
 - Manuali: https://sequential.com/wp-content/uploads/2021/09/Take-5-MIDI-Implementation-1.2.pdf

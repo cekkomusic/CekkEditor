@@ -129,7 +129,12 @@ body.embedded .topbar{display:none}
 .plist button[aria-current=true]{background:var(--amber);color:var(--amber-dk)}
 .plist button[aria-current=true] b{color:var(--amber-dk)}
 .list{display:flex;flex-direction:column;border:1px solid #000;border-radius:6px;overflow:hidden;max-height:420px;overflow-y:auto}
-.item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+.item{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+.item .n{display:flex;align-items:center;gap:6px;cursor:pointer}
+.item .n input{width:18px;height:18px;margin:0;accent-color:var(--amber)}
+.item.sel{box-shadow:inset 3px 0 0 var(--amber)}
+.selbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.selbar .cnt{font-family:var(--f-mono);font-size:12px;color:var(--dim);margin-right:auto}
 .item:last-child{border-bottom:0}
 .item:nth-child(odd){background:#202124}
 .item .n{font-family:var(--f-mono);font-size:12px;color:var(--amber)}
@@ -201,7 +206,7 @@ body.embedded .topbar{display:none}
   <div class="lower">
     <section class="card" data-tab="lib" id="libCard">
       <h3>Programmi</h3>
-      <p class="hint">I 128 programmi del synth (A11–B88). «Leggi tutti» li chiede uno per uno e li mostra qui; tocca un nome per richiamarlo sul synth. Sotto, la libreria salvata in questo browser: «Esporta» scrive file .syx sul disco, «Importa» accetta .syx del microKORG XL (programma singolo, edit buffer o tutti i programmi).</p>
+      <p class="hint">I 128 programmi del synth (A11–B88). «Leggi tutti» li chiede uno per uno e li mostra qui; tocca un nome per richiamarlo sul synth. Sotto, la libreria salvata in questo browser: spunta i suoni e usa «Esporta selezionati» o «Scrivi selezionati sul synth»: vanno in programmi consecutivi a partire da quello scelto in «Dal programma», nell'ordine della lista. «Importa» accetta .syx del microKORG XL (programma singolo, edit buffer o tutti i programmi).</p>
       <div class="tools">
         <button id="btnReadAll">Leggi tutti dal synth</button>
         <button id="btnAllToLib">Tutti in libreria</button>
@@ -210,12 +215,14 @@ body.embedded .topbar{display:none}
       <div class="tools">
         <button id="btnImport">Importa .syx</button>
         <input type="file" id="fileIn" accept=".syx,.json,application/octet-stream,application/json" multiple hidden>
-        <button id="btnExportAll">Esporta libreria .syx</button>
-        <button id="btnSendAll">Scrivi libreria sul synth</button>
+        <label class="field">Dal programma<select id="selStart"></select></label>
+        <button id="btnExportAll">Esporta selezionati .syx</button>
+        <button id="btnSendAll">Scrivi selezionati sul synth</button>
         <button id="btnExportJson" title="Backup completo della libreria">Backup</button>
         <button id="btnClear" class="danger">Svuota</button>
       </div>
       <div id="confirmBox"></div>
+      <div class="selbar"><span class="cnt" id="selCount">Nessun suono selezionato</span><button type="button" id="btnSelAll">Seleziona tutti</button><button type="button" id="btnSelNone">Nessuno</button><button type="button" id="btnDelSel" class="danger">Elimina selezionati</button></div>
       <div class="list" id="libList"></div>
     </section>
     <section class="card" data-tab="lab">
@@ -399,7 +406,7 @@ const TABS=[["prog","Programma"],["osc","Osc"],["flt","Filtro/Amp"],["eg","EG/EQ
 
 /* ============ STATO ============ */
 const S={B:new Uint8Array(352),len:342,have:false,name:"INIT",prog:0,access:null,in:null,out:null,ch:0,tim:0,pending:new Map(),raf:0,
-  lsb:true,signed:true,learned:false,snapA:null,snapB:null,waiters:[],lib:[],names:new Array(128).fill(null),dumps:new Array(128).fill(null)};
+  lsb:true,signed:true,learned:false,snapA:null,snapB:null,waiters:[],lib:[],sel:new Set(),names:new Array(128).fill(null),dumps:new Array(128).fill(null)};
 const ui=new Map();
 const $=s=>document.querySelector(s);
 const el=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a){if(x==="class")e.className=a[x];else if(x.startsWith("on"))e.addEventListener(x.slice(2),a[x]);else e.setAttribute(x,a[x])}k.flat().forEach(c=>c!=null&&e.append(c));return e};
@@ -692,6 +699,13 @@ function setName(nm){
 }
 
 /* ============ LIBRERIA ============ */
+/* selezione con le caselle: export e scrittura usano i suoni spuntati, nell'ordine della libreria */
+const selected=()=>S.lib.filter(x=>S.sel.has(x));
+function updSel(){const n=S.sel.size;$("#selCount").textContent=n?`${n} ${n===1?"suono selezionato":"suoni selezionati"}`:"Nessun suono selezionato";$("#btnDelSel").disabled=!n}
+function selCell(x,i){const cb=el("input",{type:"checkbox","aria-label":"Seleziona "+x.name});cb.checked=S.sel.has(x);
+  cb.onchange=()=>{cb.checked?S.sel.add(x):S.sel.delete(x);cb.closest(".item").classList.toggle("sel",cb.checked);updSel()};
+  return el("label",{class:"n"},cb,String(i+1).padStart(3,"0"))}
+
 const LS="mkxl-library-v1",LSO="mkxl-opts-v1";
 const b64=a=>btoa(String.fromCharCode(...a));
 const unb64=s=>Array.from(atob(s),c=>c.charCodeAt(0));
@@ -706,12 +720,12 @@ function renderPlist(){
 }
 function recall(p){S.prog=p;updProg();const st=0xB0|S.ch;if(send([st,0,0,st,32,0,0xC0|S.ch,p]))setTimeout(reqEdit,250)}
 function renderLib(){
-  const L=$("#libList");L.innerHTML="";
+  const L=$("#libList");L.innerHTML="";updSel();
   if(!S.lib.length){L.append(el("div",{class:"empty"},"Libreria vuota. Leggi un suono dal synth e premi «Salva in libreria», usa «Tutti in libreria» dopo «Leggi tutti», oppure importa un file .syx."));return}
   S.lib.forEach((x,i)=>{
     const where=x.prog!=null?` · da ${progName(x.prog)}`:"";
-    L.append(el("div",{class:"item"},
-      el("div",{class:"n"},String(i+1).padStart(3,"0")),
+    L.append(el("div",{class:"item"+(S.sel.has(x)?" sel":"")},
+      selCell(x,i),
       el("div",{class:"nm"},x.name,el("small",{},`${x.src||""}${where} · ${x.date}`)),
       el("div",{class:"acts"},
         el("button",{type:"button",title:"Carica nel buffer di modifica del synth (non sovrascrive la memoria)",onclick:()=>auditionLib(x)},"Ascolta"),
@@ -719,7 +733,7 @@ function renderLib(){
         el("button",{type:"button",onclick:()=>renameLib(x)},"Rinomina"),
         el("button",{type:"button",onclick:()=>download(x.prog!=null?progMsg(x.packed,x.prog):editMsg(x.packed),safe(x.name)+".syx")},".syx"),
         el("button",{type:"button",title:"Sposta su",onclick:()=>{if(i>0){[S.lib[i-1],S.lib[i]]=[S.lib[i],S.lib[i-1]];saveLib();renderLib()}}},"↑"),
-        el("button",{type:"button",class:"danger",onclick:()=>{S.lib.splice(i,1);saveLib();renderLib()}},"✕"))));
+        el("button",{type:"button",class:"danger",onclick:()=>{S.lib.splice(i,1);S.sel.delete(x);saveLib();renderLib()}},"✕"))));
   });
 }
 function loadPacked(x){const u=unpack(x.packed);S.B.fill(0);S.B.set(u.slice(0,S.B.length));S.len=u.length;S.have=true;S.name=x.name;renderAll()}
@@ -750,12 +764,16 @@ async function readAll(){
   toast(`Letti ${got} programmi`);
 }
 function allToLib(){let n=0;S.dumps.forEach((pk,p)=>{if(pk){addLib(pk,S.names[p],p,"synth");n++}});toast(n?`${n} programmi aggiunti alla libreria`:"Prima usa «Leggi tutti dal synth».")}
-function exportAll(){if(!S.lib.length){toast("Libreria vuota.");return}const items=S.lib.slice(0,128);download(items.map((x,i)=>progMsg(x.packed,i)).flat(),"microKORG_XL_libreria.syx");toast(`Esportati ${items.length} programmi (A11 in poi)`)}
+function selRange(){const items=selected(),st=+$("#selStart").value;
+  if(!items.length){toast("Spunta i suoni da esportare o scrivere.");return null}
+  if(st+items.length>128){toast(`Da ${progName(st)} ci sono solo ${128-st} posizioni: hai spuntato ${items.length} suoni.`);return null}
+  return {items,st,last:progName(st+items.length-1)}}
+function exportAll(){const r=selRange();if(!r)return;const {items,st,last}=r;download(items.map((x,i)=>progMsg(x.packed,st+i)).flat(),items.length===1?safe(items[0].name)+".syx":`microKORG_XL_${progName(st)}-${last}.syx`);toast(`Esportati ${items.length} programmi (${progName(st)}–${last})`)}
 function sendAll(){
-  const items=S.lib.slice(0,128);if(!items.length){toast("Libreria vuota.");return}
-  confirmBox(`Scrivere i primi ${items.length} suoni della libreria nei programmi da A11 a ${progName(items.length-1)}? I programmi presenti verranno sostituiti.`,async()=>{
-    for(let i=0;i<items.length;i++){if(!send(progMsg(items[i].packed,i)))return;S.names[i]=items[i].name;$("#lcdInfo").textContent=`Scrittura: ${i+1}/${items.length}`;await new Promise(r=>setTimeout(r,300))}
-    renderPlist();toast("Programmi scritti");log(`Scritti ${items.length} programmi`);
+  const r=selRange();if(!r)return;const {items,st,last}=r;
+  confirmBox(`Scrivere i ${items.length} suoni selezionati nei programmi ${progName(st)}–${last}? I programmi presenti in quelle posizioni verranno sostituiti.`,async()=>{
+    for(let i=0;i<items.length;i++){if(!send(progMsg(items[i].packed,st+i)))return;S.names[st+i]=items[i].name;$("#lcdInfo").textContent=`Scrittura: ${i+1}/${items.length}`;await new Promise(r=>setTimeout(r,300))}
+    renderPlist();toast("Programmi scritti");log(`Scritti ${items.length} programmi da ${progName(st)} a ${last}`);
   });
 }
 function parseSyxFile(bytes){const out=[];let i=0;while(i<bytes.length){if(bytes[i]!==0xF0){i++;continue}let j=i+1;while(j<bytes.length&&bytes[j]!==0xF7&&bytes[j]!==0xF0)j++;if(bytes[j]===0xF7)out.push(bytes.slice(i,j+1));i=bytes[j]===0xF7?j+1:j}return out}
@@ -788,7 +806,7 @@ function diff(){const a=S.snapA,b=S.snapB;if(!a||!b){toast("Servono entrambe le 
 /* ============ AVVIO ============ */
 function init(){
   const ch=$("#selCh");for(let i=1;i<=16;i++)ch.append(el("option",{value:i-1},String(i)));ch.addEventListener("change",()=>S.ch=+ch.value);
-  const sp=$("#selProg");for(let p=0;p<128;p++)sp.append(el("option",{value:p},progName(p)));sp.onchange=()=>{S.prog=+sp.value;updProg()};
+  const sp=$("#selProg"),ss=$("#selStart");for(let p=0;p<128;p++){sp.append(el("option",{value:p},progName(p)));ss.append(el("option",{value:p},progName(p)))}sp.onchange=()=>{S.prog=+sp.value;updProg()};
   buildPanel();initBuffer();renderAll();loadLib();renderLib();renderPlist();loadOpts();updProg();
   $("#btnConnect").onclick=connect;$("#selIn").onchange=bindPorts;$("#selOut").onchange=bindPorts;
   $("#btnReadEdit").onclick=reqEdit;
@@ -804,7 +822,9 @@ function init(){
   $("#fileIn").onchange=e=>{importFiles([...e.target.files]);e.target.value=""};
   $("#btnExportAll").onclick=exportAll;$("#btnSendAll").onclick=sendAll;
   $("#btnExportJson").onclick=()=>download(new TextEncoder().encode(JSON.stringify(S.lib.map(x=>({...x,packed:b64(x.packed)})))),"microKORG_XL_libreria_backup.json","application/json");
-  $("#btnClear").onclick=()=>{if(!S.lib.length)return;confirmBox(`Eliminare tutti i ${S.lib.length} suoni della libreria da questo browser?`,()=>{S.lib=[];saveLib();renderLib()})};
+  $("#btnClear").onclick=()=>{if(!S.lib.length)return;confirmBox(`Eliminare tutti i ${S.lib.length} suoni della libreria da questo browser?`,()=>{S.lib=[];S.sel.clear();saveLib();renderLib()})};
+  $("#btnSelAll").onclick=()=>{S.lib.forEach(x=>S.sel.add(x));renderLib()};$("#btnSelNone").onclick=()=>{S.sel.clear();renderLib()};
+  $("#btnDelSel").onclick=()=>{const n=S.sel.size;if(!n)return;confirmBox(`Eliminare i ${n} suoni selezionati dalla libreria di questo browser?`,()=>{S.lib=S.lib.filter(x=>!S.sel.has(x));S.sel.clear();saveLib();renderLib()})};
   $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
   $("#chkLsb").onchange=e=>{S.lsb=e.target.checked;saveOpts()};$("#chkSigned").onchange=e=>{S.signed=e.target.checked;saveOpts()};
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
