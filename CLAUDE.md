@@ -3,7 +3,7 @@
 ## Obiettivo
 Editor/librarian MIDI nel browser (Web MIDI API, con SysEx) per i sintetizzatori di Francesco:
 - **Sequential Take 5** — prima versione fatta: `take5/index.html`
-- **Korg microKORG XL** — da fare
+- **Korg microKORG XL** — prima versione fatta: `mkxl/index.html`
 - **Moog Little Phatty** — da fare
 
 Ogni editor deve:
@@ -30,7 +30,7 @@ Ogni editor deve:
   - **Take 5** (fatto): corpo nero, pannello #222326, fila alta a sezioni separate da filetti con titolo sopra; fascia centrale ardesia #3a3f4a
     (Oscillators, Mixer, Filter, Envelopes) con titoli grandi in basso; manopole nere a calotta grigio chiaro con indice nero e tacche bianche;
     Cutoff grande con tacche arancioni #ff6a1f; tasti quadrati neri che si accendono di rosso; display OLED bianco-azzurro; display programma rosso a 7 segmenti.
-  - **microKORG XL** (da fare): corpo nero, fascia frontale in alluminio spazzolato, due manopole grandi nere (Genre / Category), display ambra #f7a531,
+  - **microKORG XL** (fatto): corpo nero, fascia frontale in alluminio spazzolato, due manopole grandi nere (Genre / Category), display ambra #f7a531,
     piccole manopole a destra, 37 mini tasti, presa microfono al centro. Gli editor di riferimento mostrano: pagina Program con lista dei 128 programmi
     (A11-B88) su più colonne in carattere da display; pagina Timbre con forme d'onda e curve EG/filtro disegnate su sfondo nero; Virtual Patch a 6 righe.
   - **Little Phatty** (da fare): pannello nero con fiancate grigie, intestazioni di sezione su fascia sottile (Modulation, Oscillators, Filter,
@@ -78,6 +78,15 @@ Ogni editor deve:
   Virtual Patch: 04/00-05 Source 1-6, 04/08-0D Dest 1-6. Vocoder: 04/40-4F livelli bande, 04/50-5F pan bande; 05/04 Vocoder Sw; 05/00 Voice Mode.
 - Due timbri: in MULTI il Timbre 2 usa il canale «T2MIDI.CH»; il resto viaggia sul canale globale.
 - Porte USB: «KBD/KNOB» (uscita dal synth) e «SOUND» (ingresso al generatore). MIDI «ROUTING» deve includere USB.
+
+## Punti aperti sul microKORG XL (editor `mkxl/index.html`)
+- Il pannello legge e scrive un buffer di programma con la mappa esatta delle TABLE 1-6 (`ofs`, bit `sh`/`w`, `id`/`sub`); le modifiche partono come Parameter Change.
+- Ordine dei byte di ID/Sub ID nel Parameter Change: la tabella (8) dice LSB prima, la NOTE 4 dice MSB prima. Predefinito LSB; l'editor passa da solo all'altro ordine
+  se il synth manda un ID riconoscibile solo così (e lo salva). Commutabile a mano nel Laboratorio.
+- Valori bipolari: la NOTE 4 dice «signed value», quindi si inviano come valore − centro (es. Transpose +5 → 5). Commutabile nel Laboratorio.
+- Lunghezza del programma 342 o 346 byte: si usa quella del dump ricevuto; il Laboratorio avvisa se è diversa.
+- «Scrivi nel synth»: invia l'edit buffer (40) e poi Program Write Request (11 pp 00). La libreria scrive con Program Data Dump (4C pp 00).
+- Parametri non ancora nel pannello: Formant Hold, globali (TABLE 7), CC MAP.
 
 ## Little Phatty — dati chiave (da `docs/Little_Phatty_StageII_Manual.pdf`, Stage II, MIDI Chart v2.2 del 2009)
 - Stage II: MIDI su DIN e **USB**. In MASTER → MIDI SETUP: ingresso e uscita DIN/USB (predefinito DIN/USB), canali In/Out separati (predefinito 1), Local Control, MIDI Merge.

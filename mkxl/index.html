@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>microKORG XL Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Pannello ispirato al microKORG XL: corpo nero, sezioni su alluminio spazzolato con serigrafie scure, manopoline argento, manopola grande nera, LED e display ambra, grafici su fondo nero. Nessun logo. */
+:root{
+  --body:#0e0f10; --alu1:#e4e6e8; --alu2:#c6c9cd; --alu3:#a9adb2; --alu-line:#8b8f94;
+  --ink:#1c1e21; --ink2:#4a4e53; --amber:#f7a531; --amber-dk:#3a2402; --led:#ff8a1f; --led-off:#5a4a3a;
+  --scr:#0b0c0d; --danger:#c8352a; --ok:#2f9e5b; --panel:#1b1c1e; --line:#34363a; --legend:#ecebe7; --dim:#9a9ca1;
+  --f-panel:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--body);color:var(--legend);font-family:var(--f-panel);font-size:15px}
+body{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+button,select,input{font-family:var(--f-panel);font-size:14px}
+button{background:#232427;color:var(--legend);border:1px solid #000;border-radius:4px;padding:6px 10px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+button:hover{border-color:#5a5d62}
+button:focus-visible,select:focus-visible,.knob:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button.primary{background:var(--amber);color:var(--amber-dk);border-color:#8a5a12}
+button.danger{color:#ff7a6e}
+button:disabled{opacity:.45;cursor:not-allowed}
+select,input[type=text]{background:#131415;color:var(--legend);border:1px solid #000;border-radius:3px;padding:5px 6px;max-width:100%}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+
+/* alluminio spazzolato */
+.alu{background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.035) 1px 2px),linear-gradient(180deg,var(--alu1),var(--alu2) 55%,var(--alu3));color:var(--ink)}
+.alu select,.alu input[type=text]{background:#f3f4f5;color:var(--ink);border:1px solid var(--alu-line)}
+.alu button{background:#26272a;color:#f1f1f1}
+
+/* barra MIDI (solo se l'editor è aperto da solo) */
+.topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid #000;border-radius:6px;padding:10px 12px}
+.brand{font-weight:700;font-size:24px;letter-spacing:.1em;text-transform:uppercase;margin-right:auto}
+.brand small{display:block;font-size:11px;letter-spacing:.2em;color:var(--dim);font-weight:500}
+.field{display:flex;flex-direction:column;gap:2px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.alu .field{color:var(--ink2)}
+.status{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--led-off)}
+.dot.on{background:#5fd38a;box-shadow:0 0 8px #5fd38a}
+.dot.act{background:var(--led);box-shadow:0 0 8px var(--led)}
+body.embedded .topbar{display:none}
+
+/* display ambra e comandi programma */
+.head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;border:1px solid #6d7176;border-radius:6px;padding:10px}
+.lcd{background:linear-gradient(180deg,#ffb84a,var(--amber));border:3px solid #2a1a06;border-radius:4px;padding:8px 12px;font-family:var(--f-mono);color:var(--amber-dk);min-height:96px;box-shadow:inset 0 0 14px rgba(120,60,0,.45);display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-content:center}
+.lcd .pn{font-size:22px;font-weight:500;letter-spacing:.04em}
+.lcd input{grid-column:2/-1;font-family:var(--f-mono);font-size:22px;background:transparent;border:0;border-bottom:1px dashed rgba(58,36,2,.45);color:var(--amber-dk);padding:0 2px;min-width:0;width:100%;text-transform:uppercase}
+.lcd input:focus{outline:none;border-bottom-style:solid}
+.lcd .sm{font-size:12px;opacity:.8;grid-column:1/3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcd .val{font-size:15px;text-align:right}
+.progbox{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;align-content:flex-start}
+
+/* schede (solo telefono) */
+.tabs{display:none;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tabs button{flex:0 0 auto}
+.tabs button[aria-pressed=true]{background:var(--amber);color:var(--amber-dk);border-color:var(--amber)}
+
+/* selettore timbro */
+.tbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border:1px solid #6d7176;border-radius:6px;padding:8px 10px}
+.seg{display:inline-flex;border:1px solid #111;border-radius:4px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:#26272a;display:flex;align-items:center;gap:6px}
+.seg button+button{border-left:1px solid #111}
+.seg button i{width:7px;height:7px;border-radius:50%;background:var(--led-off)}
+.seg button[aria-pressed=true]{background:#121314}
+.seg button[aria-pressed=true] i{background:var(--led);box-shadow:0 0 6px var(--led)}
+.tbar .note{font-size:13px;color:var(--ink2);font-family:system-ui,sans-serif;margin-left:auto}
+
+/* pannello */
+.panel{display:flex;flex-wrap:wrap;gap:8px;background:#141516;border:1px solid #000;border-radius:10px;padding:8px}
+.timbre{display:contents}
+.timbre:not(.on){display:none}
+.sec{border:1px solid #6d7176;border-radius:5px;padding:6px 10px 10px;flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.sec h2{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--alu-line);padding-bottom:3px}
+.sec h2 em{font-style:normal;color:var(--ink2);font-weight:500;letter-spacing:.08em}
+.row{display:flex;flex-wrap:wrap;gap:6px 4px;align-items:flex-start}
+.row+.row{margin-top:6px}
+.sub{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink2);text-transform:uppercase;width:100%}
+.ctl{width:62px;display:flex;flex-direction:column;align-items:center;gap:2px;user-select:none;-webkit-user-select:none}
+.ctl .lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:center;line-height:1.05;min-height:23px;display:flex;align-items:flex-end;justify-content:center;color:var(--ink)}
+.ctl .v{font-family:var(--f-mono);font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;min-height:14px;white-space:nowrap}
+.knob{width:46px;height:46px;touch-action:none;cursor:ns-resize;border-radius:50%}
+.knob.big{width:74px;height:74px}
+.ctl.bigc{width:90px}
+.knob svg{display:block;width:100%;height:100%;overflow:visible}
+.ctl[hidden]{display:none}
+.ctl:has(select){width:auto;min-width:62px}
+.ctl.wide{width:128px}
+.ctl.wide select{width:100%}
+.ctl select{font-size:13px;padding:3px 4px;max-width:100%}
+.sw{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 4px 6px;width:44px;background:#26272a;border-radius:4px}
+.sw i{display:block;width:7px;height:7px;border-radius:50%;background:var(--led-off)}
+.sw[aria-pressed=true] i{background:var(--led);box-shadow:0 0 7px var(--led)}
+
+/* grafici */
+.scr{background:var(--scr);border:2px solid #2b2c2f;border-radius:3px;display:block}
+.scr path{fill:none;stroke:var(--amber);stroke-width:1.6;stroke-linejoin:round}
+.scr .fill{fill:rgba(247,165,49,.16);stroke:none}
+.scr .grid{stroke:#24262a;stroke-width:1}
+
+/* virtual patch, step, bande vocoder */
+.patch{display:grid;grid-template-columns:20px minmax(0,1fr) minmax(0,1.2fr) 62px;gap:4px 6px;align-items:center;width:100%}
+.patch b{font-family:var(--f-mono);font-size:12px;text-align:center;color:var(--ink)}
+.patch select{font-size:12px;padding:3px}
+.patch .ctl{width:62px}
+.patch .ctl .lbl{display:none}
+.steps{display:flex;gap:4px;flex-wrap:wrap}
+.steps .sw{width:34px}
+.bands{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:3px;width:100%}
+.band{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--f-mono);font-size:10px;color:var(--ink2)}
+.band input[type=range]{writing-mode:vertical-lr;direction:rtl;width:22px;height:90px;accent-color:#2a2b2e}
+.band input.pan{writing-mode:horizontal-tb;direction:ltr;width:100%;height:auto}
+
+/* programmi, libreria e lab */
+.lower{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
+.card{background:var(--panel);border:1px solid #000;border-radius:8px;padding:12px}
+.card h3{margin:0 0 4px;font-size:16px;letter-spacing:.18em;text-transform:uppercase}
+.card p.hint{margin:0 0 10px;color:var(--dim);font-size:13px;line-height:1.35;font-family:system-ui,sans-serif;max-width:72ch}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:#2d2f33;border:2px solid #2d2f33;border-radius:4px;max-height:360px;overflow:auto;margin-bottom:12px}
+.plist button{all:unset;cursor:pointer;display:flex;gap:6px;background:#0d0e0f;color:#d8d8d8;font-family:var(--f-mono);font-size:12px;padding:3px 6px;white-space:nowrap;overflow:hidden}
+.plist button b{color:var(--amber);font-weight:500}
+.plist button:hover,.plist button:focus-visible{background:#2a1c08}
+.plist button[aria-current=true]{background:var(--amber);color:var(--amber-dk)}
+.plist button[aria-current=true] b{color:var(--amber-dk)}
+.list{display:flex;flex-direction:column;border:1px solid #000;border-radius:6px;overflow:hidden;max-height:420px;overflow-y:auto}
+.item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item:nth-child(odd){background:#202124}
+.item .n{font-family:var(--f-mono);font-size:12px;color:var(--amber)}
+.item .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.item .nm small{display:block;font-family:var(--f-mono);font-size:10px;color:var(--dim)}
+.item .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.item .acts button{padding:4px 7px;font-size:12px}
+.empty{padding:18px;color:var(--dim);font-family:system-ui,sans-serif;font-size:13px}
+.log{font-family:var(--f-mono);font-size:11.5px;background:#0b0c0d;border:1px solid #000;border-radius:6px;padding:8px;height:200px;overflow:auto;white-space:pre-wrap;color:#c9cbd1}
+.confirm{margin-top:8px;background:#2a1210;border:1px solid var(--danger);border-radius:6px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:system-ui,sans-serif;font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#232427;border:1px solid var(--amber);color:var(--legend);padding:8px 14px;border-radius:6px;font-family:system-ui,sans-serif;font-size:13px;z-index:20;max-width:90vw}
+.opts{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-family:system-ui,sans-serif;font-size:13px;color:var(--dim);margin-bottom:8px}
+.opts label{display:flex;gap:6px;align-items:center}
+
+@media (max-width:900px){.head,.lower{grid-template-columns:1fr}}
+@media (max-width:820px){
+  .tabs{display:flex}
+  .panel [data-tab]:not(.show),.lower>[data-tab]:not(.show){display:none}
+  .panel:not(:has(.show)){display:none}
+  .sec{flex-basis:100%}
+  .bands{grid-template-columns:repeat(8,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">microKORG XL Editor<small>Editor e librarian via USB MIDI</small></div>
+    <label class="field">Ingresso<select id="selIn"><option value="">—</option></select></label>
+    <label class="field">Uscita<select id="selOut"><option value="">—</option></select></label>
+    <label class="field">Canale globale<select id="selCh"></select></label>
+    <button id="btnConnect" class="primary">Collega MIDI</button>
+    <div class="status"><span class="dot" id="dotLink"></span><span id="txtLink">Non collegato</span><span class="dot" id="dotAct" title="Attività MIDI"></span></div>
+  </div>
+
+  <div class="head alu">
+    <div class="lcd" aria-live="polite">
+      <div class="pn" id="lcdNum">A11</div>
+      <input type="text" id="nameIn" maxlength="8" value="INIT" aria-label="Nome del programma" spellcheck="false" autocomplete="off">
+      <div class="sm" id="lcdParam">Pronto. Collega il microKORG XL e premi «Leggi dal synth».</div>
+      <div class="val" id="lcdVal"></div>
+      <div class="sm" id="lcdInfo" style="grid-column:1/-1">Valori del pannello: programma vuoto di partenza</div>
+    </div>
+    <div class="progbox">
+      <button id="btnReadEdit" class="primary">Leggi dal synth</button>
+      <label class="field">Programma<select id="selProg"></select></label>
+      <button id="btnReadProg">Leggi programma</button>
+      <button id="btnPC" title="Invia Bank Select + Program Change">Richiama sul synth</button>
+      <button id="btnWrite" title="Salva il suono attuale nella memoria del synth">Scrivi nel synth</button>
+      <button id="btnToLib">Salva in libreria</button>
+      <button id="btnInquiry" title="Device Inquiry">Identifica</button>
+    </div>
+  </div>
+
+  <nav class="tabs" id="tabs" aria-label="Sezioni"></nav>
+
+  <div class="tbar alu" id="tbar">
+    <div class="seg" role="group" aria-label="Timbro da modificare">
+      <button type="button" data-t="0" aria-pressed="true"><i></i>Timbre 1</button>
+      <button type="button" data-t="1" aria-pressed="false"><i></i>Timbre 2</button>
+    </div>
+    <span class="note" id="tnote"></span>
+  </div>
+
+  <div class="panel" id="panel"></div>
+
+  <div class="lower">
+    <section class="card" data-tab="lib" id="libCard">
+      <h3>Programmi</h3>
+      <p class="hint">I 128 programmi del synth (A11–B88). «Leggi tutti» li chiede uno per uno e li mostra qui; tocca un nome per richiamarlo sul synth. Sotto, la libreria salvata in questo browser: «Esporta» scrive file .syx sul disco, «Importa» accetta .syx del microKORG XL (programma singolo, edit buffer o tutti i programmi).</p>
+      <div class="tools">
+        <button id="btnReadAll">Leggi tutti dal synth</button>
+        <button id="btnAllToLib">Tutti in libreria</button>
+      </div>
+      <div class="plist" id="plist" aria-label="Programmi del synth"></div>
+      <div class="tools">
+        <button id="btnImport">Importa .syx</button>
+        <input type="file" id="fileIn" accept=".syx,.json,application/octet-stream,application/json" multiple hidden>
+        <button id="btnExportAll">Esporta libreria .syx</button>
+        <button id="btnSendAll">Scrivi libreria sul synth</button>
+        <button id="btnExportJson" title="Backup completo della libreria">Backup</button>
+        <button id="btnClear" class="danger">Svuota</button>
+      </div>
+      <div id="confirmBox"></div>
+      <div class="list" id="libList"></div>
+    </section>
+    <section class="card" data-tab="lab">
+      <h3>Laboratorio</h3>
+      <p class="hint">Mostra i messaggi scambiati con il synth. Il formato del Parameter Change ha due punti ambigui nel documento Korg: l'editor li riconosce da solo dai messaggi del synth, ma qui puoi cambiarli a mano. «Istantanea A/B» e «Confronta» mostrano quali byte del programma sono cambiati.</p>
+      <div class="opts">
+        <label><input type="checkbox" id="chkLsb" checked> ID con byte basso prima</label>
+        <label><input type="checkbox" id="chkSigned" checked> Valori bipolari con segno</label>
+        <label><input type="checkbox" id="chkVerbose"> Mostra tutti i messaggi</label>
+      </div>
+      <div class="tools">
+        <button id="btnSnapA">Istantanea A</button>
+        <button id="btnSnapB">Istantanea B</button>
+        <button id="btnDiff">Confronta</button>
+        <button id="btnCopyLog">Copia log</button>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ============ DATI DELLO STRUMENTO (da microKORG XL MIDI Implementation rev. 1.01) ============ */
+const FXDEF=[["No Effect",[]],["Compressor",[["Dry/Wet",0,100,null,"dw"],["Envelope Select",0,1,["LR Mix","LR Indv."],null],["Sensitivity",1,127,null,null],["Attack",0,127,null,null],["Output Level",0,127,null,null]]],["Filter",[["Dry/Wet",0,100,null,"dw"],["Filter Type",0,4,["LPF24","LPF18","LPF12","HPF12","BPF12"],null],["Cutoff",0,127,null,null],["Resonance",0,127,null,null],["Trim",0,127,null,null],["Mod Source",0,1,["LFO","Ctrl"],null],["Mod Intensity",1,127,null,64],["Mod Response",0,127,null,null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["Control Source",0,6,null,null]]],["Band EQ",[["Dry/Wet",0,100,null,"dw"],["Trim",0,127,null,null],["B1 Type",0,1,["Peaking","Shelv Low"],null],["B1 Frequency",0,58,null,null],["B1 Q",0,95,null,null],["B1 Gain",28,100,null,64],["B2 Frequency",0,58,null,null],["B2 Q",0,95,null,null],["B2 Gain",28,100,null,64],["B3 Frequency",0,58,null,null],["B3 Q",0,95,null,null],["B3 Gain",28,100,null,64],["B4 Type",0,1,["Peaking","Shelv Hi"],null],["B4 Frequency",0,58,null,null],["B4 Q",0,95,null,null],["B4 Gain",28,100,null,64]]],["Distortion",[["Dry/Wet",0,100,null,"dw"],["Gain",0,127,null,null],["Pre EQ Frequency",0,58,null,null],["Pre EQ Q",0,95,null,null],["Pre EQ Gain",28,100,null,64],["B1 Frequency",0,58,null,null],["B1 Q",0,95,null,null],["B1 Gain",28,100,null,64],["B2 Frequency",0,58,null,null],["B2 Q",0,95,null,null],["B2 Gain",28,100,null,64],["B3 Frequency",0,58,null,null],["B3 Q",0,95,null,null],["B3 Gain",28,100,null,64],["Output Level",0,127,null,null]]],["Decimator",[["Dry/Wet",0,100,null,"dw"],["PreLPF",0,1,["Off","On"],null],["HighDamp",0,100,null,null],["Fs",0,94,null,null],["Bit",0,20,null,null],["Output Level",0,127,null,null],["Fs Mod Intensity",1,127,null,64],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null]]],["Delay",[["Dry/Wet",0,100,null,"dw"],["Type",0,1,["Stereo","Cross"],null],["Delay Tempo Sync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["L Delay Time",0,127,null,null],["R Delay Time",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["L Delay Time",0,13,null,null],["R Delay Time",0,13,null,null],["Feedback",0,127,null,null],["High Damp",0,100,null,null],["Trim",0,127,null,null],["Spread",0,127,null,null]]],["L/C/R Delay",[["Dry/Wet",0,100,null,"dw"],["Delay Tempo Sync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["L Delay Time",0,127,null,null],["C Delay Time",0,127,null,null],["R Delay Time",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["L Delay Time",0,13,null,null],["C Delay Time",0,13,null,null],["R Delay Time",0,13,null,null],["L Delay Level",0,127,null,null],["C Delay Level",0,127,null,null],["R Delay Level",0,127,null,null],["C Feedback",0,127,null,null],["Trim",0,127,null,null],["Spread",0,127,null,null]]],["Auto Panning Delay",[["Dry/Wet",0,100,null,"dw"],["Delay Tempo Sync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["L Delay Time",0,127,null,null],["R Delay Time",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["L Delay Time",0,13,null,null],["R Delay Time",0,13,null,null],["FeedBack",0,127,null,null],["Mod Depth",0,127,null,null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["LFO Spread",46,82,null,64],["High Damp",0,100,null,null],["Trim",0,127,null,null]]],["Modulation Delay",[["Dry/Wet",0,100,null,"dw"],["Delay Tempo Sync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["L Delay Time",0,127,null,null],["R Delay Time",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["L Delay Time",0,13,null,null],["R Delay Time",0,13,null,null],["FeedBack",0,127,null,null],["Mod Depth",0,127,null,null],["LFO Frequency",0,127,null,null],["LFO Spread",46,82,null,64]]],["Tape Echo",[["Dry/Wet",0,100,null,"dw"],["Delay Tempo Sync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["Tap1 Delay Time",0,127,null,null],["Tap2 Delay Time",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["Tap1 Delay Time",0,13,null,null],["Tap2 Delay Time",0,13,null,null],["Tap1 Level",0,127,null,null],["Tap2 Level",0,127,null,null],["FeedBack",0,127,null,null],["High Damp",0,100,null,null],["Low Damp",0,100,null,null],["Trim",0,127,null,null],["Saturation",0,127,null,null],["Wow Flutter Freq",0,127,null,null],["Wow Flutter Depth",0,127,null,null],["Pre Tone",0,127,null,null],["Spread",0,127,null,null]]],["Chorus",[["Dry/Wet",0,100,null,"dw"],["Mod Depth",0,127,null,null],["LFO Frequency",0,127,null,null],["LFO Spread",46,82,null,64],["PreDelay L",0,119,null,null],["PreDelay R",0,119,null,null],["Trim",0,127,null,null],["High EQ Gain",34,94,null,64]]],["Flanger",[["Dry/Wet",0,100,null,"dw"],["Delay",0,113,null,null],["Mod Depth",0,127,null,null],["Feedback",0,127,null,null],["Phase",0,1,["+","-"],null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["LFO Spread",46,82,null,64],["High Damp",0,100,null,null]]],["Vibrato",[["Dry/Wet",0,100,null,"dw"],["Mod Depth",0,127,null,null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["LFO Spread",46,82,null,64]]],["Phaser",[["Dry/Wet",0,100,null,"dw"],["Type",0,1,["Blue","U-VB"],null],["Manual",0,127,null,null],["Mod Depth",0,127,null,null],["Resonance",0,127,null,null],["Phase",0,1,["+","-"],null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["LFO Spread",46,82,null,64],["High Damp",0,100,null,null]]],["Tremolo",[["Dry/Wet",0,100,null,"dw"],["Mod Depth",0,127,null,null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["LFO Spread",46,82,null,64]]],["Ring Modulator",[["Dry/Wet",0,100,null,"dw"],["OSC Mode",0,1,["Fixed","Note"],null],["Frequency",0,127,null,null],["Offset",16,112,null,64],["Fine",14,114,null,64],["OSC Waveform",0,2,["Saw","Tri","Sine"],null],["LFO Intensity",1,127,null,64],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Waveform",0,4,["Saw","Squ","Tri","Sine","S&H"],null],["LFO Shape",1,127,null,64],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null],["Pre LPF",0,127,null,null]]],["Grain Shifter",[["Dry/Wet",0,100,null,"dw"],["Duration Temp oSync",0,1,["Off","On"],null],["Time Ratio (Sync=Off)",0,127,null,null],["Duration",0,127,null,null],["Time Ratio (Sync=On)",0,14,null,null],["Duration",0,13,null,null],["LFO Tempo Sync",0,1,["Off","On"],null],["LFO Frequency",0,127,null,null],["LFO Sync Note",0,16,null,null],["LFO Key Sync",0,1,["Off","On"],null],["LFO Init Phase",0,18,null,null]]]];
+const LFO_HZ=["0.01","0.02","0.03","0.04","0.05","0.06","0.07","0.08","0.09","0.10","0.11","0.12","0.13","0.14","0.15","0.16","0.17","0.18","0.19","0.20","0.21","0.22","0.23","0.24","0.25","0.29","0.33","0.42","0.50","0.58","0.67","0.75","0.83","0.92","1.00","1.13","1.25","1.38","1.50","1.63","1.75","1.88","2.00","2.13","2.25","2.38","2.50","2.63","2.75","2.88","3.00","3.13","3.25","3.38","3.50","3.63","3.75","3.88","4.00","4.13","4.25","4.38","4.50","4.63","4.75","4.88","5.00","5.25","5.50","5.75","6.00","6.25","6.50","6.75","7.00","7.25","7.50","7.75","8.00","8.25","8.50","8.75","9.00","9.25","9.50","9.75","10.0","10.5","11.0","11.5","12.0","12.5","13.0","13.5","14.0","14.5","15.0","16.0","17.0","18.0","19.0","20.0","21.5","23.0","24.5","26.0","27.5","29.0","31.0","33.0","35.0","37.0","39.0","41.0","44.0","47.0","50.0","53.0","57.0","61.0","65.0","70.0","75.0","80.0","85.0","90.0","95.0","100"];
+const MOD_SRC=["EG1","EG2","EG3","LFO1","LFO2","Velocity","Pitch Bend","Mod Wheel","Key Track","MIDI1","MIDI2","MIDI3"];
+const PATCH_DST=["Pitch","OSC2 Tune","OSC1 Ctrl1","OSC1 Level","OSC2 Level","Noise Level","Filt1 Balance","Filt1 Cutoff","Filt1 Reso","Filt2 Cutoff","Drive/WS Depth","Amp Level","Panpot","LFO1 Freq","LFO2 Freq","Portamento","OSC1 Ctrl2","Filt1 EG1","Filt1 KeyTrack","Filt2 Reso","Filt2 EG1","Filt2 KeyTrack","EG1 Attack","EG1 Decay","EG1 Sustain","EG1 Release","EG2 Attack","EG2 Decay","EG2 Sustain","EG2 Release","EG3 Attack","EG3 Decay","EG3 Sustain","EG3 Release","Patch1 Int","Patch2 Int","Patch3 Int","Patch4 Int","Patch5 Int","Patch6 Int"];
+const KNOB_ASSIGN=["Off","Portamento","OSC1 Ctrl1","OSC1 Ctrl2","Semitone","OSC2 Tune","OSC1 Level","OSC2 Level","Noise Level","Cutoff1","Reso1","Filt Bal1","EG1 Int1","Cutoff2","Reso2","EG1 Int2","Level","Pan","WS Depth","EG1 Attack","EG1 Decay","EG1 Sustain","EG1 Release","EG2 Attack","EG2 Decay","EG2 Sustain","EG2 Release","LFO1 Freq","LFO2 Freq","VPatch1 Int","VPatch2 Int","VPatch3 Int","VPatch4 Int","VPatch5 Int","VPatch6 Int","Hi EQ Gain","Lo EQ Gain","FX1 Dry/Wet","FX1 Ctrl1","FX1 Ctrl2","FX2 Dry/Wet","FX2 Ctrl1","FX2 Ctrl2","Arp Gate","Arp Oct Range","Arp Swing","Vc Tmb1 Lvl","Vc Tmb2 Lvl","Vc HPF Lvl","Vc Fc Offset","Vc Resonance","Vc EF Sens","Vc FcMod Int","Vc Direct Lvl","Vc Level"];
+const OSC1_WAVE=["Saw","Pulse","Triangle","Sine","Formant","Noise","PCM/DWGS","Audio In"];
+const WS_TYPE=["Off","Drive","Decimator","Hard Clip","Oct Saw","Multi Tri","Multi Sin","SubOSC Saw","SubOSC Squ","SubOSC Tri","SubOSC Sin","Level Boost"];
+const SYNC_NOTE=["8/1","4/1","2/1","1/1","3/4","1/2","3/8","1/3","1/4","3/16","1/6","1/8","1/12","1/16","1/24","1/32","1/64"];
+const DELAY_NOTE=["1/64","1/32","1/24","1/16","1/12","1/8","1/6","3/16","1/4","1/3","3/8","1/2","3/4","1/1"];
+const SCALES=["Equal Temp","Pure Major","Pure Minor","Arabic","Pythagorean","Werckmeister","Kirnberger","Slendro","Pelog","User Scale"];
+const NOTE=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const EQ_LO=[20,22,25,28,32,36,40,45,50,56,63,71,80,90,100,110,125,140,160,180,200,224,250,280,315,400,450,500,560,630,710,800,900,1000];
+const EQ_HI=["1.00","1.12","1.25","1.40","1.60","1.80","2.00","2.24","2.50","2.80","3.15","4.00","4.50","5.00","5.60","6.30","7.10","8.00","9.00","10.0","11.2","12.5","14.0","16.0","18.0","20.0"];
+
+const sgn=d=>(d>0?"+":"")+d;
+const bip=c=>v=>sgn(v-c);
+const fmtBal=v=>v===0?"-24 LPF":v<31?"24>12":v<=33?"-12 LPF":v<63?"12>HPF":v<=65?"HPF":v<95?"HPF>BPF":v<=97?"BPF":v<127?"BPF>THRU":"THRU";
+const fmtKT=v=>{const d=v-64;return (d>0?"+":"")+(d<0?d*2/63:d*2/63).toFixed(2)};
+const fmtHz=v=>LFO_HZ[v]+" Hz";
+const fmtPan=v=>v===64?"CNT":v<64?"L"+Math.min(63,64-v):"R"+(v-64);
+
+/* Parametri: ofs = byte nel programma, o = opzioni, sh/w = bit, id/sub = Parameter Change, c = centro dei bipolari, o2 = valore a 16 bit (o = LSB). */
+const P=[];
+function add(p){p.min=p.min||0;if(p.max==null)p.max=127;if(p.t==="s"){p.max=1}if(p.d==null)p.d=p.c!=null?p.c:p.min;P.push(p);return p}
+// parametri del timbro: rel = byte dentro il timbro, idOff = 0 (x0), 1 (x1) o 9 (x9)
+const TP=[
+ ["kn1","Knob 1",0,null,0,0,{t:"l",max:54,o:KNOB_ASSIGN,sec:"knob",wide:1}],
+ ["kn2","Knob 2",1,null,0,1,{t:"l",max:54,o:KNOB_ASSIGN,sec:"knob",wide:1}],
+ ["kn3","Knob 3",2,null,0,2,{t:"l",max:54,o:KNOB_ASSIGN,sec:"knob",wide:1}],
+ ["vAssign","Voice Assign",7,[6,2],0,0x0B,{t:"l",max:2,d:2,o:["Mono 1","Mono 2","Poly"],sec:"voice",g:"Voice"}],
+ ["unison","Unison",4,[0,4],0,0x08,{t:"l",max:3,o:["Off","2 Voice","3 Voice","4 Voice"],sec:"voice",g:"Voice"}],
+ ["unDet","Detune",5,null,0,0x09,{max:99,f:v=>v+"c",sec:"voice",g:"Voice"}],
+ ["unSpr","Spread",6,null,0,0x0A,{sec:"voice",g:"Voice"}],
+ ["aTune","Analog Tune",9,null,0,0x13,{sec:"voice",g:"Voice"}],
+ ["transp","Transpose",10,null,0,0x14,{min:16,max:112,c:64,sec:"voice",g:"Pitch"}],
+ ["detune","Detune",11,null,0,0x15,{min:14,max:114,c:64,f:v=>sgn(v-64)+"c",sec:"voice",g:"Pitch"}],
+ ["vib","Vibrato",12,null,0,0x16,{min:1,max:127,c:64,sec:"voice",g:"Pitch"}],
+ ["bend","Bend Range",13,null,0,0x10,{min:52,max:76,c:64,d:66,sec:"voice",g:"Pitch"}],
+ ["porta","Portamento",14,null,0,0x11,{sec:"voice",g:"Pitch"}],
+ ["o1wave","Wave",16,[0,4],0,0x17,{t:"l",max:7,o:OSC1_WAVE,sec:"osc1"}],
+ ["o1mod","Osc Mod",16,[4,2],0,0x18,{t:"l",max:3,o:["Waveform","Cross","Unison","VPM"],sec:"osc1"}],
+ ["o1c1","Ctrl 1",17,null,0,0x19,{sec:"osc1"}],
+ ["o1c2","Ctrl 2",18,null,0,0x1A,{sec:"osc1"}],
+ ["o1pcm","PCM/DWGS",19,null,0,0x1B,{max:64,f:v=>"#"+(v+1),sec:"osc1"}],
+ ["o2wave","Wave",21,[0,2],0,0x20,{t:"l",max:3,o:["Saw","Pulse","Triangle","Sine"],sec:"osc2"}],
+ ["o2mod","Osc Mod",21,[4,2],0,0x21,{t:"l",max:3,o:["Off","Ring","Sync","Ring+Sync"],sec:"osc2"}],
+ ["o2semi","Semitone",22,null,0,0x22,{min:40,max:88,c:64,sec:"osc2"}],
+ ["o2tune","Tune",23,null,0,0x23,{min:1,max:127,c:64,sec:"osc2"}],
+ ["o1lvl","Osc 1",24,null,0,0x28,{d:127,sec:"mix"}],
+ ["o2lvl","Osc 2",25,null,0,0x29,{sec:"mix"}],
+ ["noise","Noise",26,null,0,0x2A,{sec:"mix"}],
+ ["route","Routing",28,[0,2],0,0x30,{t:"l",max:3,o:["Single","Serial","Parallel","Individual"],sec:"flt"}],
+ ["f1bal","Type Bal",29,null,0,0x31,{f:fmtBal,sec:"flt",g:"Filter 1"}],
+ ["f1cut","Cutoff",30,null,0,0x32,{d:127,big:1,sec:"flt",g:"Filter 1"}],
+ ["f1res","Resonance",31,null,0,0x33,{sec:"flt",g:"Filter 1"}],
+ ["f1eg","EG1 Int",32,null,0,0x34,{min:1,max:127,c:64,sec:"flt",g:"Filter 1"}],
+ ["f1kt","Key Track",33,null,0,0x35,{min:1,max:127,c:64,f:fmtKT,sec:"flt",g:"Filter 1"}],
+ ["f1vel","Velocity",34,null,0,0x36,{min:1,max:127,c:64,sec:"flt",g:"Filter 1"}],
+ ["f2type","Type",28,[4,2],0,0x40,{t:"l",max:2,o:["LPF","HPF","BPF"],sec:"flt",g:"Filter 2"}],
+ ["f2cut","Cutoff",35,null,0,0x42,{d:127,sec:"flt",g:"Filter 2"}],
+ ["f2res","Resonance",36,null,0,0x43,{sec:"flt",g:"Filter 2"}],
+ ["f2eg","EG1 Int",37,null,0,0x44,{min:1,max:127,c:64,sec:"flt",g:"Filter 2"}],
+ ["f2kt","Key Track",38,null,0,0x45,{min:1,max:127,c:64,f:fmtKT,sec:"flt",g:"Filter 2"}],
+ ["f2vel","Velocity",39,null,0,0x46,{min:1,max:127,c:64,sec:"flt",g:"Filter 2"}],
+ ["level","Level",40,null,0,0x50,{d:100,sec:"amp",g:"Amp"}],
+ ["pan","Panpot",44,null,0,0x55,{c:64,f:fmtPan,sec:"amp",g:"Amp"}],
+ ["ampKT","Key Track",45,null,0,0x56,{min:1,max:127,c:64,sec:"amp",g:"Amp"}],
+ ["punch","Punch",46,null,0,0x57,{sec:"amp",g:"Amp"}],
+ ["wsType","WS Type",42,[0,4],0,0x51,{t:"l",max:11,o:WS_TYPE,sec:"amp",g:"Drive / Wave Shape"}],
+ ["wsPos","Position",41,[4,2],0,0x52,{t:"l",max:1,o:["Pre Filter1","Pre Amp"],sec:"amp",g:"Drive / Wave Shape"}],
+ ["wsDepth","Depth",43,null,0,0x54,{sec:"amp",g:"Drive / Wave Shape"}],
+];
+["EG1 · Filter","EG2 · Amp","EG3"].forEach((g,i)=>{const r=48+i*6,s=0x60+i*0x10;
+  TP.push([`eg${i}a`,"Attack",r,null,0,s,{sec:"eg",g,eg:i}],[`eg${i}d`,"Decay",r+1,null,0,s+1,{sec:"eg",g,eg:i,d:64}],
+    [`eg${i}s`,"Sustain",r+2,null,0,s+2,{sec:"eg",g,eg:i,d:i===1?127:64}],[`eg${i}r`,"Release",r+3,null,0,s+3,{sec:"eg",g,eg:i,d:20}],
+    [`eg${i}v`,"Velocity",r+4,null,0,s+4,{min:1,max:127,c:64,sec:"eg",g,eg:i}])});
+[["lfo1",66,0x90,["Saw","Square","Triangle","S/H","Random"]],["lfo2",70,0xA0,["Saw","Square+","Sine","S/H","Random"]]].forEach(([k,r,s,w],i)=>{
+  const g=i?"LFO 2":"LFO 1";
+  TP.push([k+"w","Wave",r,[0,4],0,s,{t:"l",max:4,o:w,sec:"lfo",g}],[k+"f","Freq",r+1,null,0,s+2,{f:fmtHz,d:64,sec:"lfo",g}],
+    [k+"bpm","BPM Sync",r+2,[7,1],0,s+3,{t:"s",sec:"lfo",g}],[k+"key","Key Sync",r+2,[5,2],0,s+4,{t:"l",max:2,o:["Off","Timbre","Voice"],sec:"lfo",g}],
+    [k+"n","Sync Note",r+3,[0,5],0,s+6,{t:"l",max:16,o:SYNC_NOTE,d:8,sec:"lfo",g}])});
+for(let i=0;i<6;i++){const r=74+i*3,s=i*4;
+  TP.push([`pt${i}s`,"Source",r,null,1,s,{t:"l",max:11,o:MOD_SRC,sec:"patch",slot:i,part:"s"}],[`pt${i}d`,"Dest",r+1,null,1,s+1,{t:"l",max:39,o:PATCH_DST,sec:"patch",slot:i,part:"d"}],
+    [`pt${i}i`,"Int",r+2,null,1,s+2,{min:1,max:127,c:64,sec:"patch",slot:i,part:"i"}])}
+TP.push(["eqLf","Low Freq",92,null,9,0,{max:33,d:10,f:v=>EQ_LO[v]+" Hz",sec:"eq"}],["eqLg","Low Gain",93,null,9,1,{min:34,max:94,c:64,f:v=>sgn((v-64)/2)+" dB",sec:"eq"}],
+        ["eqHf","Hi Freq",94,null,9,2,{max:25,d:12,f:v=>EQ_HI[v]+"k",sec:"eq"}],["eqHg","Hi Gain",95,null,9,3,{min:34,max:94,c:64,f:v=>sgn((v-64)/2)+" dB",sec:"eq"}]);
+for(let t=0;t<2;t++)for(const [k,l,rel,bits,idOff,sub,x] of TP)
+  add({...x,k:`t${t}.${k}`,l,ofs:16+t*96+rel,sh:bits?bits[0]:0,w:bits?bits[1]:8,id:0x10*(t+1)+idOff,sub,tim:t});
+
+// programma: voce, arpeggiatore, vocoder
+const pp=(k,l,o,bits,id,sub,x)=>add({...x,k,l,ofs:o,sh:bits?bits[0]:0,w:bits?bits[1]:8,id,sub});
+pp("vMode","Voice Mode",8,[6,2],0,0x19,{t:"l",max:3,o:["Single","Layer","Split","Multi"],sec:"prog"});
+pp("t2ch","T2 MIDI Ch",13,null,0,0x1A,{t:"l",max:16,d:16,o:[...Array(16)].map((_,i)=>String(i+1)).concat("Global"),sec:"prog"});
+pp("octave","Octave",15,[4,4],0,0x1D,{min:5,max:11,c:8,sec:"prog"});
+pp("scaleT","Scale",12,[0,4],0,0x17,{t:"l",max:9,o:SCALES,sec:"prog",wide:1});
+pp("scaleK","Scale Key",12,[4,4],0,0x1E,{t:"l",max:11,o:NOTE,sec:"prog"});
+pp("tempo","Tempo",334,null,0x60,0x00,{min:20,max:300,d:120,two:1,f:v=>v+" bpm",sec:"arp"});
+pp("arpOn","Arp On",336,[7,1],0x60,0x01,{t:"s",sec:"arp"});
+pp("arpKey","Key Sync",336,[6,1],0x60,0x02,{t:"s",sec:"arp"});
+pp("arpTimb","Timbre",8,[4,2],0,0x18,{t:"l",max:2,o:["Timbre 1","Timbre 2","Timbre 1+2"],sec:"arp"});
+pp("arpType","Type",338,[0,3],0x61,0x00,{t:"l",max:5,o:["Up","Down","Alt 1","Alt 2","Random","Trigger"],sec:"arp"});
+pp("arpRes","Resolution",338,[4,4],0x61,0x01,{t:"l",max:8,d:2,o:["1/32","1/24","1/16","1/12","1/8","1/6","1/4","1/2","1/1"],sec:"arp"});
+pp("arpOct","Octave",339,[5,2],0x61,0x02,{t:"l",max:3,o:["1 Oct","2 Oct","3 Oct","4 Oct"],sec:"arp"});
+pp("arpLast","Last Step",339,[0,5],0x61,0x03,{t:"l",max:7,d:7,o:["1","2","3","4","5","6","7","8"],sec:"arp"});
+pp("arpLatch","Latch",339,[7,1],0x61,0x06,{t:"s",sec:"arp"});
+pp("arpGate","Gate",340,null,0x61,0x04,{max:100,d:75,f:v=>v+"%",sec:"arp"});
+pp("arpSwing","Swing",341,null,0x61,0x05,{min:14,max:114,c:64,f:v=>sgn((v-64)*2)+"%",sec:"arp"});
+for(let i=0;i<8;i++)pp("step"+i,String(i+1),342,[i,1],0x61,0x10+i,{t:"s",d:1,sec:"arp",step:i});
+pp("vcSw","Vocoder",208,[7,1],0x40,0x00,{t:"s",sec:"voc",g:"Vocoder"});
+pp("vcSel","Carrier",208,[0,2],0x40,0x01,{t:"l",max:1,o:["Audio In","Timbre 2"],sec:"voc",g:"Vocoder"});
+pp("vcGate","HPF Gate",208,[5,1],0x40,0x04,{t:"s",sec:"voc",g:"Vocoder"});
+pp("vcGs","Gate Sens",209,null,0x40,0x06,{sec:"voc",g:"Vocoder"});
+pp("vcThr","Threshold",210,null,0x40,0x07,{sec:"voc",g:"Vocoder"});
+pp("vcHpf","HPF Level",211,null,0x40,0x08,{sec:"voc",g:"Vocoder"});
+pp("vcDir","Direct",212,null,0x40,0x09,{sec:"voc",g:"Livelli"});
+pp("vcT1","Timbre 1",213,null,0x40,0x0A,{sec:"voc",g:"Livelli"});
+pp("vcT2","Timbre 2",214,null,0x40,0x0B,{sec:"voc",g:"Livelli"});
+pp("vcLvl","Vocoder",215,null,0x40,0x0C,{sec:"voc",g:"Livelli"});
+pp("vcShift","Formant Shift",248,[4,3],0x42,0x01,{min:2,max:6,c:4,sec:"voc",g:"Filtro"});
+pp("vcFcSrc","Fc Mod Src",248,[0,4],0x42,0x00,{t:"l",max:11,o:MOD_SRC,sec:"voc",g:"Filtro"});
+pp("vcCut","Cutoff Ofs",250,null,0x42,0x10,{min:1,max:127,c:64,sec:"voc",g:"Filtro"});
+pp("vcRes","Resonance",251,null,0x42,0x11,{sec:"voc",g:"Filtro"});
+pp("vcFcInt","Fc Mod Int",252,null,0x42,0x12,{min:1,max:127,c:64,sec:"voc",g:"Filtro"});
+pp("vcEf","E.F. Sens",253,null,0x42,0x13,{f:v=>v===127?"Hold":String(v),sec:"voc",g:"Filtro"});
+for(let i=0;i<16;i++){pp(`vb${i}p`,"Pan "+(i+1),216+i*2,null,0x41,i*2,{c:64,f:fmtPan,sec:"vband",band:i,part:"p"});pp(`vb${i}l`,"Level "+(i+1),217+i*2,null,0x41,i*2+1,{d:127,sec:"vband",band:i,part:"l"})}
+// effetti: tipo, assegnazioni e 20 parametri il cui significato dipende dal tipo
+for(let e=0;e<2;e++){const b=286+e*24,s=e*0x30;
+  pp(`fx${e}type`,"Type",b,[0,7],0x50,s+1,{t:"l",max:17,o:FXDEF.map(x=>x[0]),sec:"fx"+e,fx:e,wide:1});
+  pp(`fx${e}k1`,"Ctrl 1",b+2,[0,5],0x50,s+2,{t:"l",max:19,o:[],sec:"fx"+e,fx:e,ka:1});
+  pp(`fx${e}k2`,"Ctrl 2",b+3,[0,5],0x50,s+3,{t:"l",max:19,o:[],sec:"fx"+e,fx:e,ka:1});
+  for(let i=0;i<20;i++)pp(`fx${e}p${i}`,"",b+4+i,null,0x50,s+0x10+i,{sec:"fx"+e,fx:e,slot:i,dyn:1});
+}
+const byK=new Map(P.map(p=>[p.k,p]));
+const byId=new Map(P.map(p=>[(p.id<<14)|p.sub,p]));
+
+const SECTIONS=[
+ {id:"prog",t:"Program",tab:"prog"},
+ {id:"voice",t:"Voice · Pitch",tab:"prog",tim:1},
+ {id:"osc1",t:"Oscillator 1",tab:"osc",tim:1,wave:1},
+ {id:"osc2",t:"Oscillator 2",tab:"osc",tim:1,wave:1},
+ {id:"mix",t:"Mixer",tab:"osc",tim:1},
+ {id:"flt",t:"Filter",tab:"flt",tim:1},
+ {id:"amp",t:"Amp · Drive",tab:"flt",tim:1},
+ {id:"eg",t:"Envelopes",tab:"eg",tim:1},
+ {id:"lfo",t:"LFO",tab:"lfo",tim:1},
+ {id:"patch",t:"Virtual Patch",tab:"lfo",tim:1},
+ {id:"eq",t:"EQ",tab:"eg",tim:1},
+ {id:"knob",t:"Knob Assign",e:"manopole 1-3",tab:"prog",tim:1},
+ {id:"arp",t:"Arpeggiator",tab:"arp"},
+ {id:"fx0",t:"Master FX 1",tab:"fx"},
+ {id:"fx1",t:"Master FX 2",tab:"fx"},
+ {id:"voc",t:"Vocoder",tab:"voc"},
+ {id:"vband",t:"Vocoder · 16 bande",e:"livello e pan",tab:"voc"},
+];
+const TABS=[["prog","Programma"],["osc","Osc"],["flt","Filtro/Amp"],["eg","EG/EQ"],["lfo","LFO/Patch"],["arp","Arp"],["fx","FX"],["voc","Vocoder"],["lib","Programmi"],["lab","Lab"]];
+
+/* ============ STATO ============ */
+const S={B:new Uint8Array(352),len:342,have:false,name:"INIT",prog:0,access:null,in:null,out:null,ch:0,tim:0,pending:new Map(),raf:0,
+  lsb:true,signed:true,learned:false,snapA:null,snapB:null,waiters:[],lib:[],names:new Array(128).fill(null),dumps:new Array(128).fill(null)};
+const ui=new Map();
+const $=s=>document.querySelector(s);
+const el=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a){if(x==="class")e.className=a[x];else if(x.startsWith("on"))e.addEventListener(x.slice(2),a[x]);else e.setAttribute(x,a[x])}k.flat().forEach(c=>c!=null&&e.append(c));return e};
+const progName=p=>(p<64?"A":"B")+(Math.floor(p%64/8)+1)+(p%8+1);
+
+/* ============ BUFFER DEL PROGRAMMA ============ */
+function getB(p){if(p.two)return S.B[p.ofs]|(S.B[p.ofs+1]<<8);const m=(1<<p.w)-1;return (S.B[p.ofs]>>p.sh)&m}
+function putB(p,v){if(p.two){S.B[p.ofs]=v&255;S.B[p.ofs+1]=(v>>8)&255;return}const m=(1<<p.w)-1;S.B[p.ofs]=(S.B[p.ofs]&~(m<<p.sh)&255)|((v&m)<<p.sh)}
+function nameFromB(){let s="";for(let i=0;i<8;i++){const c=S.B[i];s+=c>=32&&c<127?String.fromCharCode(c):" "}return s.trimEnd()}
+
+/* ============ COSTRUZIONE PANNELLO ============ */
+function arcPath(a0,a1,r){const p=a=>[25+r*Math.cos(a),25+r*Math.sin(a)];const [x0,y0]=p(a0),[x1,y1]=p(a1);const large=Math.abs(a1-a0)>Math.PI?1:0;const sw=a1>a0?1:0;return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${large} ${sw} ${x1.toFixed(2)} ${y1.toFixed(2)}`}
+const A0=Math.PI*0.75,A1=Math.PI*2.25;
+function fmt(p,v){if(p.f)return p.f(v);if(p.o&&p.o[v]!=null)return p.o[v];if(p.c!=null)return sgn(v-p.c);return String(v)}
+function lbl(p){return p.l}
+
+function makeKnob(p){
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox","0 0 50 50");
+  // manopoline argento come quelle del pannello; la grande è nera con anello argento
+  svg.innerHTML=p.big?`<path d="${arcPath(A0,A1,22)}" fill="none" stroke="rgba(28,30,33,.25)" stroke-width="2.4" stroke-linecap="round"/>
+    <path class="arc" fill="none" stroke="#1c1e21" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="25" cy="25" r="19" fill="#151515"/><circle cx="25" cy="25" r="19" fill="none" stroke="#9fa3a8" stroke-width="1.2"/>
+    <circle cx="25" cy="25" r="10" fill="#c9ccd0"/><circle cx="23" cy="22.5" r="6" fill="#fff" opacity=".3"/>
+    <line class="ptr" x1="25" y1="25" x2="25" y2="7.5" stroke="#f1f1f1" stroke-width="2.2" stroke-linecap="round"/>`
+   :`<path d="${arcPath(A0,A1,22)}" fill="none" stroke="rgba(28,30,33,.22)" stroke-width="2.4" stroke-linecap="round"/>
+    <path class="arc" fill="none" stroke="#1c1e21" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="25" cy="25" r="17" fill="#2a2b2e"/><circle cx="25" cy="25" r="14" fill="#dfe1e4"/><circle cx="22.5" cy="22" r="8" fill="#fff" opacity=".45"/>
+    <line class="ptr" x1="25" y1="25" x2="25" y2="11.5" stroke="#1c1e21" stroke-width="2.4" stroke-linecap="round"/>`;
+  const k=el("div",{class:"knob"+(p.big?" big":""),tabindex:"0",role:"slider","aria-valuemin":p.min,"aria-valuemax":p.max});
+  k.append(svg);
+  const v=el("div",{class:"v"}),lb=el("div",{class:"lbl"},lbl(p));
+  const box=el("div",{class:"ctl"+(p.big?" bigc":""),title:`${p.l} · ID ${hx(p.id)}:${hx(p.sub)}`},lb,k,v);
+  let drag=null;
+  k.addEventListener("pointerdown",e=>{k.setPointerCapture(e.pointerId);drag={y:e.clientY,v:getB(p)};k.focus();e.preventDefault()});
+  k.addEventListener("pointermove",e=>{if(!drag)return;const span=p.max-p.min;const px=e.shiftKey?900:Math.max(160,Math.min(320,span*2));setVal(p,Math.round(drag.v+(drag.y-e.clientY)/px*span),{send:true})});
+  const end=()=>drag=null;k.addEventListener("pointerup",end);k.addEventListener("pointercancel",end);
+  k.addEventListener("wheel",e=>{e.preventDefault();const st=Math.max(1,Math.round((p.max-p.min)/127));setVal(p,getB(p)+(e.deltaY<0?st:-st),{send:true})},{passive:false});
+  k.addEventListener("keydown",e=>{const st=Math.max(1,Math.round((p.max-p.min)/127));let d=0;if(e.key==="ArrowUp"||e.key==="ArrowRight")d=st;if(e.key==="ArrowDown"||e.key==="ArrowLeft")d=-st;if(e.key==="PageUp")d=st*10;if(e.key==="PageDown")d=-st*10;if(d){e.preventDefault();setVal(p,getB(p)+d,{send:true})}});
+  k.addEventListener("dblclick",()=>setVal(p,p.d,{send:true}));
+  ui.set(p.k,{render(val){const t=(val-p.min)/(p.max-p.min||1);const a=A0+t*(A1-A0);const c=p.c!=null?A0+((p.c-p.min)/(p.max-p.min))*(A1-A0):A0;
+    svg.querySelector(".arc").setAttribute("d",Math.abs(a-c)<0.01?"":(a>c?arcPath(c,a,22):arcPath(a,c,22)));
+    svg.querySelector(".ptr").setAttribute("transform",`rotate(${(a-Math.PI*1.5)*180/Math.PI} 25 25)`);
+    v.textContent=fmt(p,val);k.setAttribute("aria-label",p.l);k.setAttribute("aria-valuenow",val);k.setAttribute("aria-valuetext",fmt(p,val))},
+    relabel(){lb.textContent=lbl(p);k.setAttribute("aria-valuemin",p.min);k.setAttribute("aria-valuemax",p.max)},box});
+  return box;
+}
+function makeSwitch(p){
+  const b=el("button",{class:"sw","aria-pressed":"false",type:"button","aria-label":p.l},el("i"));
+  const box=el("div",{class:"ctl",title:`${p.l} · ID ${hx(p.id)}:${hx(p.sub)}`},el("div",{class:"lbl"},p.l),b,el("div",{class:"v"}));
+  b.addEventListener("click",()=>setVal(p,getB(p)?0:1,{send:true}));
+  ui.set(p.k,{render(val){b.setAttribute("aria-pressed",val?"true":"false");box.querySelector(".v").textContent=val?"on":"off"},box});
+  return box;
+}
+function makeList(p){
+  const s=el("select",{"aria-label":p.l});
+  const fill=()=>{s.innerHTML="";for(let i=p.min;i<=p.max;i++)s.append(el("option",{value:i},(p.o&&p.o[i])||String(i)))};fill();
+  s.addEventListener("change",()=>setVal(p,+s.value,{send:true,force:true}));
+  const lb=el("div",{class:"lbl"},p.l);
+  const box=el("div",{class:"ctl"+(p.wide||(p.o&&p.o.some(x=>x.length>8))?" wide":""),title:`${p.l} · ID ${hx(p.id)}:${hx(p.sub)}`},lb,s,el("div",{class:"v"}));
+  ui.set(p.k,{render(val){s.value=val},relabel(){lb.textContent=p.l;fill();s.value=getB(p)},box});
+  return box;
+}
+const makeCtl=p=>p.t==="s"?makeSwitch(p):p.t==="l"?makeList(p):makeKnob(p);
+
+function makePatch(t){
+  const box=el("div",{class:"patch"});
+  for(let i=0;i<6;i++){
+    const ps=byK.get(`t${t}.pt${i}s`),pd=byK.get(`t${t}.pt${i}d`),pi=byK.get(`t${t}.pt${i}i`);
+    const ss=el("select",{"aria-label":`Patch ${i+1} sorgente`});MOD_SRC.forEach((x,j)=>ss.append(el("option",{value:j},x)));
+    const ds=el("select",{"aria-label":`Patch ${i+1} destinazione`});PATCH_DST.forEach((x,j)=>ds.append(el("option",{value:j},x)));
+    ss.onchange=()=>setVal(ps,+ss.value,{send:true,force:true});ds.onchange=()=>setVal(pd,+ds.value,{send:true,force:true});
+    ui.set(ps.k,{render:v=>ss.value=v});ui.set(pd.k,{render:v=>ds.value=v});
+    box.append(el("b",{},String(i+1)),ss,ds,makeKnob(pi));
+  }
+  return box;
+}
+function makeBands(){
+  const box=el("div",{class:"bands"});
+  for(let i=0;i<16;i++){
+    const pl=byK.get(`vb${i}l`),pn=byK.get(`vb${i}p`);
+    const rl=el("input",{type:"range",min:0,max:127,"aria-label":`Banda ${i+1} livello`}),rp=el("input",{type:"range",class:"pan",min:0,max:127,"aria-label":`Banda ${i+1} pan`});
+    rl.oninput=()=>setVal(pl,+rl.value,{send:true});rp.oninput=()=>setVal(pn,+rp.value,{send:true});rp.ondblclick=()=>setVal(pn,64,{send:true});
+    ui.set(pl.k,{render:v=>rl.value=v});ui.set(pn.k,{render:v=>{rp.value=v;rp.title=fmtPan(v)}});
+    box.append(el("div",{class:"band"},rl,rp,String(i+1)));
+  }
+  return box;
+}
+// grafici: forma d'onda degli oscillatori e inviluppi
+function scr(w,h,cls){const ns="http://www.w3.org/2000/svg";const s=document.createElementNS(ns,"svg");s.setAttribute("viewBox",`0 0 ${w} ${h}`);s.setAttribute("class","scr "+(cls||""));s.style.width=w+"px";s.style.height=h+"px";s.innerHTML=`<line class="grid" x1="0" y1="${h/2}" x2="${w}" y2="${h/2}"/><path class="fill"/><path class="ln"/>`;return s}
+function waveD(kind,w,h){
+  const m=h/2,a=h*.38,pts=[];const N=120;
+  for(let i=0;i<=N;i++){const x=i/N,ph=(x*2)%1;let y;
+    switch(kind){case"Saw":y=1-2*ph;break;case"Pulse":case"Square":case"Square+":y=ph<.5?1:-1;break;case"Triangle":y=ph<.5?4*ph-1:3-4*ph;break;
+      case"Sine":y=Math.sin(ph*2*Math.PI);break;case"Formant":y=Math.sin(ph*2*Math.PI)*.6+Math.sin(ph*10*Math.PI)*.4*(1-ph);break;
+      case"Noise":case"Random":y=Math.sin(i*12.9898)*43758.5453%1*2;break;case"S/H":y=[.6,-.3,.9,-.8,.2,-.5,.7,-.1][Math.floor(x*8)];break;
+      case"PCM/DWGS":y=Math.sin(ph*2*Math.PI)*.5+Math.sin(ph*6*Math.PI)*.35+Math.sin(ph*14*Math.PI)*.15;break;
+      case"Audio In":y=Math.sin(x*9)*Math.sin(x*41)*.9;break;default:y=0}
+    pts.push(`${(x*w).toFixed(1)} ${(m-y*a).toFixed(1)}`)}
+  return "M"+pts.join("L");
+}
+const graphs=[];
+function waveGraph(p){const g=scr(120,40);graphs.push(()=>{g.querySelector(".ln").setAttribute("d",waveD(p.o[getB(p)],120,40))});return g}
+function envGraph(t,i){const g=scr(170,48);graphs.push(()=>{
+  const v=k=>getB(byK.get(`t${t}.eg${i}${k}`)),kx=34/127,H=44,T=4;
+  const x1=2+v("a")*kx,x2=x1+v("d")*kx,x3=x2+30,x4=x3+v("r")*kx,ys=T+(H-T)*(1-v("s")/127);
+  const d=`M2 ${H} L${x1.toFixed(1)} ${T} L${x2.toFixed(1)} ${ys.toFixed(1)} L${x3.toFixed(1)} ${ys.toFixed(1)} L${x4.toFixed(1)} ${H}`;
+  g.querySelector(".ln").setAttribute("d",d);g.querySelector(".fill").setAttribute("d",d+" Z")});return g}
+function drawGraphs(){graphs.forEach(f=>f())}
+
+function buildSection(s,t){
+  const sec=el("section",{class:"sec alu","data-tab":s.tab,id:"sec-"+s.id+(t!=null?"-"+t:"")},el("h2",{},s.t,s.e?el("em",{},s.e):null));
+  const key=p=>t!=null?p.tim===t:p.tim==null;
+  if(s.id==="patch"){sec.append(makePatch(t));return sec}
+  if(s.id==="vband"){sec.append(makeBands());return sec}
+  let row=null,grp;
+  const ps=P.filter(p=>p.sec===s.id&&key(p)&&!p.dyn&&p.step==null);
+  for(const p of ps){
+    if(p.g!==grp||!row){grp=p.g;row=el("div",{class:"row"});if(p.g)row.append(el("div",{class:"sub"},p.g));sec.append(row);
+      if(s.id==="eg"&&p.eg!=null){row.append(envGraph(t,p.eg))}}
+    row.append(makeCtl(p));
+  }
+  if(s.wave){const pw=P.find(p=>p.sec===s.id&&key(p)&&p.k.endsWith("wave"));sec.insertBefore(el("div",{class:"row"},waveGraph(pw)),sec.children[1])}
+  if(s.id==="arp"){const st=el("div",{class:"steps"});P.filter(p=>p.step!=null).forEach(p=>st.append(makeSwitch(p)));sec.append(el("div",{class:"row"},el("div",{class:"sub"},"Step"),st))}
+  if(s.id.startsWith("fx")){const e=+s.id[2];const dyn=el("div",{class:"row",id:"fxdyn"+e});sec.append(dyn);P.filter(p=>p.fx===e&&p.dyn).forEach(p=>dyn.append(makeKnob(p)))}
+  return sec;
+}
+function buildPanel(){
+  const panel=$("#panel");
+  const tims=[el("div",{class:"timbre on","data-t":"0"}),el("div",{class:"timbre","data-t":"1"})];
+  // ordine: programma, poi il timbro scelto, poi arp, effetti e vocoder
+  panel.append(buildSection(SECTIONS[0]));
+  panel.append(...tims);
+  for(const s of SECTIONS.slice(1)){if(s.tim)tims.forEach((tb,t)=>tb.append(buildSection(s,t)));else panel.append(buildSection(s))}
+  const tabs=$("#tabs");
+  TABS.forEach(([id,t],i)=>tabs.append(el("button",{type:"button","aria-pressed":i===0?"true":"false","data-t":id,onclick:()=>showTab(id)},t)));
+  showTab("prog");
+  document.querySelectorAll("#tbar .seg button").forEach(b=>b.onclick=()=>selTimbre(+b.dataset.t));
+}
+function showTab(id){
+  document.querySelectorAll("[data-tab]").forEach(e=>e.classList.toggle("show",e.dataset.tab===id));
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===id?"true":"false"));
+  $("#tbar").style.display=matchMedia("(max-width:820px)").matches&&!["prog","osc","flt","eg","lfo"].includes(id)?"none":"";
+}
+function selTimbre(t){S.tim=t;document.querySelectorAll(".timbre").forEach(e=>e.classList.toggle("on",+e.dataset.t===t));
+  document.querySelectorAll("#tbar .seg button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.t===t?"true":"false"));updNote()}
+function updNote(){const m=getB(byK.get("vMode"));$("#tnote").textContent=m===0?"Voice Mode Single: suona solo il Timbre 1":m===3?"Multi: il Timbre 2 usa il canale «T2 MIDI Ch»":"Layer/Split: suonano entrambi i timbri"}
+
+// effetti: etichette e scale dei 20 parametri secondo il tipo scelto
+function fxRelabel(e){
+  const type=getB(byK.get(`fx${e}type`)),def=(FXDEF[type]||FXDEF[0])[1];
+  for(let i=0;i<20;i++){const p=byK.get(`fx${e}p${i}`),d=def[i],u=ui.get(p.k);
+    if(!d){u.box.hidden=true;continue}
+    const [name,mn,mx,opts,c]=d;p.l=name;p.min=mn;p.max=mx;p.o=opts||(/Sync Note/.test(name)?SYNC_NOTE:/Delay Time|Duration/.test(name)&&mx===13?DELAY_NOTE:null);
+    p.c=typeof c==="number"?c:null;p.f=c==="dw"?(v=>v===0?"Dry":v===100?"Wet":v+"%"):/LFO Frequency|Wow Flutter Freq/.test(name)&&mx===127?fmtHz:null;
+    u.box.hidden=false;u.relabel();u.render(Math.max(p.min,Math.min(p.max,getB(p))))}
+  for(const k of ["k1","k2"]){const p=byK.get(`fx${e}${k}`);p.o=[...Array(20)].map((_,i)=>def[i]?def[i][0]:"—");ui.get(p.k).relabel()}
+}
+
+/* ============ VALORI ============ */
+function setVal(p,v,{send=false,quiet=false,force=false}={}){
+  v=Math.max(p.min,Math.min(p.max,Math.round(v)));
+  if(getB(p)===v&&!force){return}
+  putB(p,v);
+  const u=ui.get(p.k);if(u)u.render(v);
+  if(p.fx!=null&&!p.dyn&&!p.ka)fxRelabel(p.fx);
+  if(p.k==="vMode")updNote();
+  if(p.eg!=null||/wave$|w$/.test(p.k))drawGraphs();
+  if(!quiet)lcd(p,v);
+  if(send)queueSend(p,v);
+}
+function lcd(p,v){
+  const sec=SECTIONS.find(s=>s.id===p.sec);
+  $("#lcdParam").textContent=(p.tim!=null?"T"+(p.tim+1)+" › ":"")+(sec?sec.t+" › ":"")+(p.g?p.g+" › ":"")+p.l;
+  $("#lcdVal").textContent=fmt(p,v);
+}
+function renderAll(){for(const p of P){if(p.dyn)continue;const u=ui.get(p.k);if(u)u.render(Math.max(p.min,Math.min(p.max,getB(p))))}fxRelabel(0);fxRelabel(1);updNote();drawGraphs();$("#nameIn").value=S.name}
+function initBuffer(){S.B.fill(0);for(let i=0;i<8;i++)S.B[i]=" ".charCodeAt(0);"INIT".split("").forEach((c,i)=>S.B[i]=c.charCodeAt(0));for(const p of P)if(!p.dyn)putB(p,p.d);
+  for(let e=0;e<2;e++)for(let i=0;i<20;i++)S.B[286+e*24+4+i]=64;S.name="INIT"}
+
+/* ============ MIDI ============ */
+const HOST=(()=>{try{return window.parent!==window&&window.parent.CekkMIDI||null}catch(e){return null}})();
+function bindHost(){
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
+  const p=HOST.ports("mkxl");S.access=HOST.access;S.in=p.in;S.out=p.out;S.ch=p.ch;$("#selCh").value=p.ch;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
+  if(S.in&&S.out)log(`Porte dalla app: IN «${S.in.name}» · OUT «${S.out.name}» · canale globale ${S.ch+1}`);
+}
+async function connect(){
+  if(!navigator.requestMIDIAccess){toast("Questo browser non supporta Web MIDI. Usa Chrome o Edge (anche Chrome su Android).");return}
+  try{S.access=await navigator.requestMIDIAccess({sysex:true});log("Accesso MIDI con SysEx concesso.")}
+  catch(e){try{S.access=await navigator.requestMIDIAccess();log("SysEx negato: senza SysEx l'editor non può né leggere né modificare il microKORG XL.");toast("Permesso SysEx negato: l'editor del microKORG XL ne ha bisogno.")}catch(e2){toast("Accesso MIDI negato dal browser.");return}}
+  S.access.onstatechange=fillPorts;fillPorts();
+}
+function fillPorts(){
+  const si=$("#selIn"),so=$("#selOut");const keepI=si.value,keepO=so.value;
+  si.innerHTML="";so.innerHTML="";
+  const ins=[...S.access.inputs.values()],outs=[...S.access.outputs.values()];
+  si.append(el("option",{value:""},ins.length?"—":"Nessun ingresso"));so.append(el("option",{value:""},outs.length?"—":"Nessuna uscita"));
+  ins.forEach(p=>si.append(el("option",{value:p.id},p.name)));outs.forEach(p=>so.append(el("option",{value:p.id},p.name)));
+  const pick=(list,keep,re)=>keep&&list.find(p=>p.id===keep)?keep:(list.find(p=>re.test(p.name))||list.find(p=>/microkorg/i.test(p.name))||list[0]||{}).id||"";
+  si.value=pick(ins,keepI,/microkorg.*(kbd|knob)/i);so.value=pick(outs,keepO,/microkorg.*sound/i);bindPorts();
+}
+function bindPorts(){
+  if(S.in)S.in.removeEventListener("midimessage",onMidi);
+  S.in=S.access&&$("#selIn").value?S.access.inputs.get($("#selIn").value):null;
+  S.out=S.access&&$("#selOut").value?S.access.outputs.get($("#selOut").value):null;
+  if(S.in){S.in.addEventListener("midimessage",onMidi);S.in.open()}
+  const ok=!!(S.in&&S.out);
+  $("#dotLink").classList.toggle("on",ok);$("#txtLink").textContent=ok?S.out.name:"Scegli ingresso e uscita";
+  if(ok)log(`Porte: IN «${S.in.name}» · OUT «${S.out.name}»`);
+}
+let actT=0;function blink(){$("#dotAct").classList.add("act");clearTimeout(actT);actT=setTimeout(()=>$("#dotAct").classList.remove("act"),90)}
+function send(bytes){if(!S.out){toast("Nessuna uscita MIDI selezionata.");return false}try{S.out.send(bytes);blink();if($("#chkVerbose").checked)log("→ "+hex(bytes.slice(0,24))+(bytes.length>24?" …":""));return true}catch(e){log("Errore invio: "+e.message);return false}}
+const HDR=()=>[0xF0,0x42,0x30|S.ch,0x7E];
+
+// Parameter Change: F0 42 3g 7E 41 [ID] [SubID] vv VV F7
+function pcMsg(p,v){
+  let val=p.c!=null&&S.signed?v-p.c:v;val&=0x3FFF;
+  const two=(n,lsb)=>lsb?[n&127,(n>>7)&127]:[(n>>7)&127,n&127];
+  return [...HDR(),0x41,...two(p.id,S.lsb),...two(p.sub,S.lsb),val&127,(val>>7)&127,0xF7];
+}
+function queueSend(p,v){S.pending.set(p,v);if(!S.raf)S.raf=requestAnimationFrame(flush)}
+function flush(){S.raf=0;if(!S.out){S.pending.clear();return}const b=[];for(const [p,v] of S.pending)b.push(...pcMsg(p,v));S.pending.clear();if(b.length)send(b)}
+
+function onMidi(ev){
+  const d=ev.data;blink();
+  if(d[0]===0xF0){onSysex(d);return}
+  if((d[0]&0xF0)===0xC0){S.prog=d[1];updProg();log(`Program Change ricevuto: ${progName(d[1])}`)}
+}
+function onSysex(d){
+  if($("#chkVerbose").checked)log("← "+hex(d.slice(0,24))+(d.length>24?` … (${d.length} byte)`:""));
+  if(d[1]===0x7E&&d[3]===0x06&&d[4]===0x02){const ok=d[5]===0x42&&d[6]===0x7E;log(`Device Inquiry: ${hex(d.slice(5,d.length-1))} → ${ok?"microKORG XL riconosciuto, versione "+d[12]+"."+d[10]:"strumento diverso"}`);toast(ok?"microKORG XL riconosciuto":"Risposta da uno strumento diverso dal microKORG XL");return}
+  if(d[1]!==0x42||(d[2]&0xF0)!==0x30||d[3]!==0x7E){log(`SysEx ignorato (${d.length} byte): ${hex(d.slice(0,6))}…`);return}
+  const g=d[2]&15;if(g!==S.ch)log(`Nota: il synth trasmette sul canale globale ${g+1}, l'editor è impostato su ${S.ch+1}.`);
+  const f=d[4];
+  if(f===0x40)receivedProgram(Array.from(d.slice(5,d.length-1)),null);
+  else if(f===0x4C)receivedProgram(Array.from(d.slice(7,d.length-1)),d[5]|(d[6]<<7));
+  else if(f===0x41)rxParam(d);
+  else if(f===0x51)log(`Dump globali ricevuto: ${d.length} byte`);
+  else if(f===0x23)log("Synth: dati caricati (ACK).");
+  else if(f===0x24){log("Synth: errore di caricamento (NAK). Controlla GLOBAL «PROTECT» = OFF.");toast("Il synth ha rifiutato i dati: memoria protetta? (GLOBAL › PROTECT)")}
+  else if(f===0x26){log("Synth: formato dati errato.");toast("Il synth segnala un formato dati errato.")}
+  else if(f===0x21){log("Synth: scrittura completata.");toast("Programma scritto nel synth")}
+  else if(f===0x22){log("Synth: errore di scrittura.");toast("Scrittura non riuscita (memoria protetta?)")}
+  else log(`SysEx microKORG XL funzione 0x${f.toString(16)} (${d.length} byte)`);
+}
+// riconosce da solo l'ordine dei byte dell'ID e il formato con segno, la prima volta che il synth manda un Parameter Change
+function rxParam(d){
+  const a=d.slice(5,11),dec=lsb=>{const r=(x,y)=>lsb?x|(y<<7):(x<<7)|y;return [r(a[0],a[1]),r(a[2],a[3])]};
+  let [id,sub]=dec(S.lsb),p=byId.get((id<<14)|sub);
+  if(!p){const [i2,s2]=dec(!S.lsb),p2=byId.get((i2<<14)|s2);if(p2){p=p2;S.lsb=!S.lsb;$("#chkLsb").checked=S.lsb;saveOpts();log(`Formato Parameter Change: ID con byte ${S.lsb?"basso":"alto"} prima (riconosciuto dai messaggi del synth).`)}}
+  let raw=a[4]|(a[5]<<7);if(raw&0x2000)raw-=0x4000;
+  if(!p&&id===0&&sub<8){S.B[sub]=raw&127;S.name=nameFromB()||"INIT";$("#nameIn").value=S.name;return}
+  if(!p){log(`Parameter Change non riconosciuto: ${hex(a)}`);return}
+  if(raw<0&&!S.signed){S.signed=true;$("#chkSigned").checked=true;saveOpts();log("Formato Parameter Change: valori bipolari con segno (riconosciuto).")}
+  const v=p.c!=null&&S.signed?raw+p.c:raw;
+  if(p.tim!=null&&p.tim!==S.tim&&!matchMedia("(max-width:820px)").matches)selTimbre(p.tim);
+  setVal(p,v);
+}
+function unpack(src){const out=[];for(let i=0;i<src.length;i+=8){const ms=src[i];for(let j=1;j<8&&i+j<src.length;j++)out.push(src[i+j]|(((ms>>(j-1))&1)<<7))}return out}
+function pack(src){const out=[];for(let i=0;i<src.length;i+=7){const ch=src.slice(i,i+7);let ms=0;ch.forEach((b,j)=>{if(b&128)ms|=1<<j});out.push(ms,...ch.map(b=>b&127))}return out}
+function nameOf(u){let s="";for(let i=0;i<8;i++){const c=u[i];s+=c>=32&&c<127?String.fromCharCode(c):" "}return s.trimEnd()||"(senza nome)"}
+function receivedProgram(packed,prog){
+  const u=unpack(packed);
+  if(prog!=null){S.names[prog]=nameOf(u);S.dumps[prog]=packed;renderPlist()}
+  const w=S.waiters.shift();
+  if(w){w({packed,prog,name:nameOf(u)});if(w.quiet)return}
+  S.B.fill(0);S.B.set(u.slice(0,S.B.length));S.len=u.length;S.have=true;S.name=nameOf(u);S.lastPacked=packed;
+  if(prog!=null){S.prog=prog;}
+  renderAll();updProg();
+  $("#lcdInfo").textContent=`Ricevuto ${prog!=null?"programma "+progName(prog):"edit buffer"} · ${packed.length} byte → ${u.length} byte`;
+  log(`Ricevuto ${prog!=null?"programma "+progName(prog):"edit buffer"}: ${packed.length} byte compressi → ${u.length} byte. Nome: ${S.name}`);
+  if(u.length!==342&&u.length!==346)log(`Attenzione: lunghezza dati ${u.length} diversa da quella attesa (342 o 346). Segnalalo nella chat.`);
+}
+function updProg(){$("#lcdNum").textContent=progName(S.prog);$("#selProg").value=S.prog;document.querySelectorAll("#plist button").forEach((b,i)=>b.setAttribute("aria-current",i===S.prog?"true":"false"))}
+const reqEdit=()=>send([...HDR(),0x10,0xF7]);
+const reqProg=p=>send([...HDR(),0x1C,p&127,0x00,0xF7]);
+const editMsg=pk=>[...HDR(),0x40,...pk,0xF7];
+const progMsg=(pk,p)=>[...HDR(),0x4C,p&127,0x00,...pk,0xF7];
+function waitPatch(ms=2500,quiet=false){return new Promise((res,rej)=>{const w=x=>{clearTimeout(t);res(x)};w.quiet=quiet;const t=setTimeout(()=>{S.waiters=S.waiters.filter(f=>f!==w);rej(new Error("timeout"))},ms);S.waiters.push(w)})}
+function currentPacked(){return S.have?pack(Array.from(S.B.slice(0,S.len))):null}
+
+/* ============ NOME ============ */
+function setName(nm){
+  nm=nm.toUpperCase().replace(/[^\x20-\x7E]/g,"").slice(0,8);S.name=nm.trimEnd()||"INIT";
+  const pad=nm.padEnd(8," ");const b=[];
+  for(let i=0;i<8;i++){const c=pad.charCodeAt(i);if(S.B[i]!==c){S.B[i]=c;b.push(...[...HDR(),0x41,...(S.lsb?[0,0,i,0]:[0,0,0,i]),c,0,0xF7])}}
+  if(b.length&&S.out)send(b);
+}
+
+/* ============ LIBRERIA ============ */
+const LS="mkxl-library-v1",LSO="mkxl-opts-v1";
+const b64=a=>btoa(String.fromCharCode(...a));
+const unb64=s=>Array.from(atob(s),c=>c.charCodeAt(0));
+function saveLib(){try{localStorage.setItem(LS,JSON.stringify(S.lib.map(x=>({...x,packed:b64(x.packed)}))))}catch(e){log("Salvataggio nel browser non riuscito: "+e.message)}}
+function loadLib(){try{const r=JSON.parse(localStorage.getItem(LS)||"[]");S.lib=r.map(x=>({...x,packed:unb64(x.packed)}))}catch(e){S.lib=[]}}
+function saveOpts(){try{localStorage.setItem(LSO,JSON.stringify({lsb:S.lsb,signed:S.signed}))}catch(e){}}
+function loadOpts(){try{const o=JSON.parse(localStorage.getItem(LSO)||"{}");if(o.lsb!=null)S.lsb=o.lsb;if(o.signed!=null)S.signed=o.signed}catch(e){}$("#chkLsb").checked=S.lsb;$("#chkSigned").checked=S.signed}
+function addLib(packed,name,prog,src){S.lib.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:name||"Senza nome",packed,prog,src,date:new Date().toISOString().slice(0,10)});saveLib();renderLib()}
+function renderPlist(){
+  const L=$("#plist");L.innerHTML="";
+  for(let i=0;i<128;i++)L.append(el("button",{type:"button","aria-current":i===S.prog?"true":"false",title:"Richiama "+progName(i),onclick:()=>recall(i)},el("b",{},progName(i)),S.names[i]||"········"));
+}
+function recall(p){S.prog=p;updProg();const st=0xB0|S.ch;if(send([st,0,0,st,32,0,0xC0|S.ch,p]))setTimeout(reqEdit,250)}
+function renderLib(){
+  const L=$("#libList");L.innerHTML="";
+  if(!S.lib.length){L.append(el("div",{class:"empty"},"Libreria vuota. Leggi un suono dal synth e premi «Salva in libreria», usa «Tutti in libreria» dopo «Leggi tutti», oppure importa un file .syx."));return}
+  S.lib.forEach((x,i)=>{
+    const where=x.prog!=null?` · da ${progName(x.prog)}`:"";
+    L.append(el("div",{class:"item"},
+      el("div",{class:"n"},String(i+1).padStart(3,"0")),
+      el("div",{class:"nm"},x.name,el("small",{},`${x.src||""}${where} · ${x.date}`)),
+      el("div",{class:"acts"},
+        el("button",{type:"button",title:"Carica nel buffer di modifica del synth (non sovrascrive la memoria)",onclick:()=>auditionLib(x)},"Ascolta"),
+        el("button",{type:"button",title:"Scrivi nel programma scelto in alto",onclick:()=>askWrite(x)},"Scrivi"),
+        el("button",{type:"button",onclick:()=>renameLib(x)},"Rinomina"),
+        el("button",{type:"button",onclick:()=>download(x.prog!=null?progMsg(x.packed,x.prog):editMsg(x.packed),safe(x.name)+".syx")},".syx"),
+        el("button",{type:"button",title:"Sposta su",onclick:()=>{if(i>0){[S.lib[i-1],S.lib[i]]=[S.lib[i],S.lib[i-1]];saveLib();renderLib()}}},"↑"),
+        el("button",{type:"button",class:"danger",onclick:()=>{S.lib.splice(i,1);saveLib();renderLib()}},"✕"))));
+  });
+}
+function loadPacked(x){const u=unpack(x.packed);S.B.fill(0);S.B.set(u.slice(0,S.B.length));S.len=u.length;S.have=true;S.name=x.name;renderAll()}
+function auditionLib(x){if(send(editMsg(x.packed))){loadPacked(x);$("#lcdInfo").textContent="Caricato nel buffer (non salvato sul synth)"}}
+function renameLib(x){
+  const box=$("#confirmBox");box.innerHTML="";
+  const inp=el("input",{type:"text",value:x.name,maxlength:"8"});
+  box.append(el("div",{class:"confirm",style:"border-color:var(--line);background:#232427"},"Nuovo nome (8 caratteri):",inp,
+    el("button",{type:"button",class:"primary",onclick:()=>{const nm=inp.value.toUpperCase().replace(/[^\x20-\x7E]/g,"").slice(0,8);if(nm){const u=unpack(x.packed);const pad=nm.padEnd(8," ");for(let i=0;i<8;i++)u[i]=pad.charCodeAt(i);x.packed=pack(u);x.name=nm.trimEnd()}saveLib();renderLib();box.innerHTML=""}},"OK"),
+    el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));inp.focus();inp.select();
+}
+function confirmBox(msg,onYes){
+  const box=$("#confirmBox");box.innerHTML="";
+  box.append(el("div",{class:"confirm"},el("span",{style:"flex:1 1 240px"},msg),
+    el("button",{type:"button",class:"primary",onclick:()=>{box.innerHTML="";onYes()}},"Conferma"),
+    el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));
+  showTab("lib");box.scrollIntoView({block:"nearest"});
+}
+function askWrite(x){const p=+$("#selProg").value;confirmBox(`Scrivere «${x.name}» in ${progName(p)}? Il programma che c'è ora in quella posizione verrà sostituito.`,()=>{if(send(progMsg(x.packed,p))){S.names[p]=x.name;renderPlist();log(`Programma «${x.name}» inviato in ${progName(p)}`)}})}
+async function readAll(){
+  if(!S.out||!S.in){toast("Collega prima il MIDI.");return}
+  log("Lettura dei 128 programmi…");let got=0;
+  for(let p=0;p<128;p++){
+    const pr=waitPatch(3000,true);reqProg(p);
+    try{await pr;got++;$("#lcdInfo").textContent=`Lettura programmi: ${got}/128`}
+    catch(e){log(`Nessuna risposta per ${progName(p)}. Controlla MIDI FLT «SYS EX» = ENABLE e ROUTING con USB.`);break}
+  }
+  toast(`Letti ${got} programmi`);
+}
+function allToLib(){let n=0;S.dumps.forEach((pk,p)=>{if(pk){addLib(pk,S.names[p],p,"synth");n++}});toast(n?`${n} programmi aggiunti alla libreria`:"Prima usa «Leggi tutti dal synth».")}
+function exportAll(){if(!S.lib.length){toast("Libreria vuota.");return}const items=S.lib.slice(0,128);download(items.map((x,i)=>progMsg(x.packed,i)).flat(),"microKORG_XL_libreria.syx");toast(`Esportati ${items.length} programmi (A11 in poi)`)}
+function sendAll(){
+  const items=S.lib.slice(0,128);if(!items.length){toast("Libreria vuota.");return}
+  confirmBox(`Scrivere i primi ${items.length} suoni della libreria nei programmi da A11 a ${progName(items.length-1)}? I programmi presenti verranno sostituiti.`,async()=>{
+    for(let i=0;i<items.length;i++){if(!send(progMsg(items[i].packed,i)))return;S.names[i]=items[i].name;$("#lcdInfo").textContent=`Scrittura: ${i+1}/${items.length}`;await new Promise(r=>setTimeout(r,300))}
+    renderPlist();toast("Programmi scritti");log(`Scritti ${items.length} programmi`);
+  });
+}
+function parseSyxFile(bytes){const out=[];let i=0;while(i<bytes.length){if(bytes[i]!==0xF0){i++;continue}let j=i+1;while(j<bytes.length&&bytes[j]!==0xF7&&bytes[j]!==0xF0)j++;if(bytes[j]===0xF7)out.push(bytes.slice(i,j+1));i=bytes[j]===0xF7?j+1:j}return out}
+async function importFiles(files){
+  let n=0;
+  for(const f of files){
+    const bytes=new Uint8Array(await f.arrayBuffer());
+    if(/\.json$/i.test(f.name)){try{const r=JSON.parse(new TextDecoder().decode(bytes)).filter(x=>x&&typeof x.packed==="string");r.forEach(x=>S.lib.push({...x,packed:unb64(x.packed)}));n+=r.length;saveLib();renderLib()}catch(e){toast("Backup non valido.")}continue}
+    for(const m of parseSyxFile(bytes)){
+      if(m[1]!==0x42||(m[2]&0xF0)!==0x30||m[3]!==0x7E)continue;
+      if(m[4]===0x4C){const p=Array.from(m.slice(7,m.length-1));addLib(p,nameOf(unpack(p)),m[5],"file");n++}
+      else if(m[4]===0x40){const p=Array.from(m.slice(5,m.length-1));addLib(p,nameOf(unpack(p)),null,"file");n++}
+    }
+  }
+  toast(n?`Importati ${n} suoni`:"Nessun programma del microKORG XL trovato nel file.");
+}
+function download(bytes,name,type="application/octet-stream"){const blob=new Blob([bytes instanceof Uint8Array?bytes:new Uint8Array(bytes)],{type});const a=el("a",{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+const safe=s=>s.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"programma";
+
+/* ============ LOG E UTILITÀ ============ */
+const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+const hx=n=>n.toString(16).padStart(2,"0").toUpperCase();
+function log(m){const L=$("#log");const t=new Date().toTimeString().slice(0,8);L.textContent+=`[${t}] ${m}\n`;L.scrollTop=L.scrollHeight}
+let toastT=0;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+function snap(w){if(!S.have){toast("Prima leggi un suono dal synth.");return}S[w]=Array.from(S.B.slice(0,S.len));log(`Istantanea ${w==="snapA"?"A":"B"} salvata (${S.len} byte).`)}
+function diff(){const a=S.snapA,b=S.snapB;if(!a||!b){toast("Servono entrambe le istantanee.");return}const ch=[];for(let i=0;i<Math.max(a.length,b.length);i++)if(a[i]!==b[i])ch.push(i);
+  if(!ch.length){log("Nessuna differenza tra A e B.");return}
+  log(`Byte cambiati (${ch.length}): `+ch.slice(0,60).map(i=>{const ps=P.filter(p=>p.ofs===i||(p.two&&p.ofs+1===i)).map(p=>(p.tim!=null?"T"+(p.tim+1)+" ":"")+p.l).join("/");return `#${i}${ps?" ("+ps+")":""}: ${a[i]}→${b[i]}`}).join(", "))}
+
+/* ============ AVVIO ============ */
+function init(){
+  const ch=$("#selCh");for(let i=1;i<=16;i++)ch.append(el("option",{value:i-1},String(i)));ch.addEventListener("change",()=>S.ch=+ch.value);
+  const sp=$("#selProg");for(let p=0;p<128;p++)sp.append(el("option",{value:p},progName(p)));sp.onchange=()=>{S.prog=+sp.value;updProg()};
+  buildPanel();initBuffer();renderAll();loadLib();renderLib();renderPlist();loadOpts();updProg();
+  $("#btnConnect").onclick=connect;$("#selIn").onchange=bindPorts;$("#selOut").onchange=bindPorts;
+  $("#btnReadEdit").onclick=reqEdit;
+  $("#btnReadProg").onclick=()=>reqProg(+$("#selProg").value);
+  $("#btnPC").onclick=()=>recall(+$("#selProg").value);
+  $("#btnWrite").onclick=()=>{const pk=currentPacked();if(!pk){toast("Prima leggi un suono dal synth.");return}const p=+$("#selProg").value;
+    confirmBox(`Salvare il suono attuale «${S.name}» nel programma ${progName(p)} del synth? Il programma che c'è ora verrà sostituito.`,()=>{if(send(editMsg(pk)))setTimeout(()=>{send([...HDR(),0x11,p,0x00,0xF7]);S.names[p]=S.name;renderPlist()},300)})};
+  $("#btnToLib").onclick=()=>{const pk=currentPacked();if(!pk){toast("Prima leggi un suono dal synth.");return}addLib(pk,S.name,S.prog,"synth");toast(`«${S.name}» salvato in libreria`)};
+  $("#btnInquiry").onclick=()=>send([0xF0,0x7E,0x7F,0x06,0x01,0xF7]);
+  $("#nameIn").addEventListener("change",e=>{setName(e.target.value);e.target.value=S.name});
+  $("#btnReadAll").onclick=readAll;$("#btnAllToLib").onclick=allToLib;
+  $("#btnImport").onclick=()=>$("#fileIn").click();
+  $("#fileIn").onchange=e=>{importFiles([...e.target.files]);e.target.value=""};
+  $("#btnExportAll").onclick=exportAll;$("#btnSendAll").onclick=sendAll;
+  $("#btnExportJson").onclick=()=>download(new TextEncoder().encode(JSON.stringify(S.lib.map(x=>({...x,packed:b64(x.packed)})))),"microKORG_XL_libreria_backup.json","application/json");
+  $("#btnClear").onclick=()=>{if(!S.lib.length)return;confirmBox(`Eliminare tutti i ${S.lib.length} suoni della libreria da questo browser?`,()=>{S.lib=[];saveLib();renderLib()})};
+  $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
+  $("#chkLsb").onchange=e=>{S.lsb=e.target.checked;saveOpts()};$("#chkSigned").onchange=e=>{S.signed=e.target.checked;saveOpts()};
+  $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
+  addEventListener("resize",()=>{const cur=document.querySelector("#tabs button[aria-pressed=true]");if(cur)showTab(cur.dataset.t)});
+  if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
+    if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
+  log("Editor pronto. Sul microKORG XL: MIDI › ROUTING = USB o MIDI+USB, MIDI FLT › SYS EX = ENABLE; per scrivere programmi GLOBAL › PROTECT = OFF. Il canale qui deve essere il canale globale del synth.");
+  if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
+}
+init();
+</script>
+</body>
+</html>

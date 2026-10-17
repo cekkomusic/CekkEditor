@@ -9,7 +9,7 @@ Su Android, in Chrome: menu ⋮ → «Installa app» (o il pulsante «Installa»
 | Synth | Stato | Editor |
 |---|---|---|
 | Sequential Take 5 | prima versione | [`take5/`](take5/index.html) |
-| Korg microKORG XL | da fare | — |
+| Korg microKORG XL | prima versione | [`mkxl/`](mkxl/index.html) |
 | Moog Little Phatty | da fare | — |
 
 Nessuna build: HTML, CSS e JavaScript scritti a mano. Contesto tecnico e punti aperti: [`CLAUDE.md`](CLAUDE.md). Manuali: [`docs/manuali.md`](docs/manuali.md).
