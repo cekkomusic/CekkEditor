@@ -1,0 +1,12 @@
+{
+ "synth": "phatty",
+ "nome": "Prova ricette",
+ "descrizione": "Suono semplice per verificare il meccanismo: Osc 1 a 8', filtro a 4 poli mezzo chiuso, modulazione e arpeggiatore spenti.",
+ "parametri": {
+  "cc74": 32, "cc15": 127, "cc16": 0, "cc6": 0, "cc65": 0,
+  "cc19": 8000, "cc21": 20, "cc27": 80, "cc109": 96,
+  "cc23": 0, "cc24": 50, "cc25": 40, "cc26": 25,
+  "cc28": 0, "cc29": 64, "cc30": 127, "cc31": 25,
+  "cc113": 0
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "synth": "mkxl",
+ "nome": "PROVA",
+ "descrizione": "Suono semplice per verificare il meccanismo: Timbre 1 con dente di sega, filtro passa-basso mezzo chiuso, effetti e arpeggiatore spenti.",
+ "parametri": {
+  "vMode": 0, "t0.vAssign": 2, "t0.unison": 0,
+  "t0.o1wave": 0, "t0.o1mod": 0, "t0.o2wave": 0, "t0.o2mod": 0,
+  "t0.o1lvl": 127, "t0.o2lvl": 0, "t0.noise": 0,
+  "t0.route": 0, "t0.f1bal": 32, "t0.f1cut": 64, "t0.f1res": 20, "t0.f1eg": 84, "t0.f1kt": 64,
+  "t0.level": 110, "t0.pan": 64, "t0.wsType": 0,
+  "t0.eg0a": 0, "t0.eg0d": 50, "t0.eg0s": 40, "t0.eg0r": 25,
+  "t0.eg1a": 0, "t0.eg1d": 64, "t0.eg1s": 127, "t0.eg1r": 25,
+  "fx0type": 0, "fx1type": 0, "arpOn": 0, "vcSw": 0
+ }
+}

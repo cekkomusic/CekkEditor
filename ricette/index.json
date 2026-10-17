@@ -1,0 +1,5 @@
+[
+ { "synth": "take5", "file": "take5-prova.json", "nome": "Prova ricette", "descrizione": "Solo per verificare il meccanismo" },
+ { "synth": "mkxl", "file": "mkxl-prova.json", "nome": "PROVA", "descrizione": "Solo per verificare il meccanismo" },
+ { "synth": "phatty", "file": "phatty-prova.json", "nome": "Prova ricette", "descrizione": "Solo per verificare il meccanismo" }
+]

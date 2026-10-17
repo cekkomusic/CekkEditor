@@ -1,6 +1,6 @@
 // Prima la rete (così gli aggiornamenti arrivano subito), la cache solo senza connessione.
-const CACHE="cekk-v4";
-const CORE=["./","index.html","manifest.webmanifest","take5/","mkxl/","phatty/","icons/icon.svg","icons/icon-192.png","icons/icon-512.png"];
+const CACHE="cekk-v5";
+const CORE=["./","index.html","manifest.webmanifest","take5/","mkxl/","phatty/","ricette/index.json","icons/icon.svg","icons/icon-192.png","icons/icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{

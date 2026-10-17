@@ -120,6 +120,7 @@ body.embedded .topbar{display:none}
 .lower{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
 .card{background:var(--panel);border:1px solid #000;border-radius:8px;padding:12px}
 .card h3{margin:0 0 4px;font-size:16px;letter-spacing:.18em;text-transform:uppercase}
+.card h4{margin:14px 0 6px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .card p.hint{margin:0 0 10px;color:var(--dim);font-size:13px;line-height:1.35;font-family:system-ui,sans-serif;max-width:72ch}
 .tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
 .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:#2d2f33;border:2px solid #2d2f33;border-radius:4px;max-height:360px;overflow:auto;margin-bottom:12px}
@@ -224,6 +225,10 @@ body.embedded .topbar{display:none}
       <div id="confirmBox"></div>
       <div class="selbar"><span class="cnt" id="selCount">Nessun suono selezionato</span><button type="button" id="btnSelAll">Seleziona tutti</button><button type="button" id="btnSelNone">Nessuno</button><button type="button" id="btnDelSel" class="danger">Elimina selezionati</button></div>
       <div class="list" id="libList"></div>
+      <h4>Ricette</h4>
+      <p class="hint">Una ricetta è l'elenco dei valori dei parametri di un suono, preparato in chat. «Prova» la applica al pannello e la manda al synth, nella zona di modifica: la memoria del synth non cambia finché non salvi. «Esporta pannello come ricetta» salva il suono attuale nello stesso formato.</p>
+      <div class="tools"><button id="btnRecImport">Importa ricetta</button><input type="file" id="recIn" accept=".json,application/json" hidden><button id="btnRecExport">Esporta pannello come ricetta</button></div>
+      <div class="list" id="recList"></div>
     </section>
     <section class="card" data-tab="lab">
       <h3>Laboratorio</h3>
@@ -793,6 +798,43 @@ async function importFiles(files){
 function download(bytes,name,type="application/octet-stream"){const blob=new Blob([bytes instanceof Uint8Array?bytes:new Uint8Array(bytes)],{type});const a=el("a",{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 const safe=s=>s.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"programma";
 
+/* ============ RICETTE ============ */
+// Una ricetta è un file JSON in ricette/ (elenco in ricette/index.json): {synth, nome, descrizione, parametri:{chiave:valore}}.
+// Le chiavi e i valori sono quelli dell'editor (vedi ricette/README.md); la ricetta si invia come modifiche di parametro, mai come scrittura in memoria.
+async function loadRecipes(){
+  const L=$("#recList");L.innerHTML="";let list=[];
+  try{const r=await fetch("../ricette/index.json",{cache:"no-cache"});if(r.ok)list=(await r.json()).filter(x=>x.synth===RECIPE_SYNTH)}catch(e){}
+  if(!list.length){L.append(el("div",{class:"empty"},"Nessuna ricetta disponibile per questo synth."));return}
+  list.forEach((x,i)=>L.append(el("div",{class:"item"},el("div",{class:"n"},String(i+1).padStart(3,"0")),
+    el("div",{class:"nm"},x.nome,el("small",{},x.descrizione||"")),
+    el("div",{class:"acts"},el("button",{type:"button",title:"Applica al pannello e invia al synth (non salva in memoria)",onclick:()=>fetchRecipe(x.file)},"Prova")))));
+}
+async function fetchRecipe(f){let r;try{const res=await fetch("../ricette/"+f);r=await res.json()}catch(e){toast("Ricetta non disponibile: la prima volta serve la connessione.");return}applyRecipe(r)}
+function applyRecipe(r){
+  if(!r||typeof r.parametri!=="object"){toast("File di ricetta non valido.");return}
+  if(r.synth&&r.synth!==RECIPE_SYNTH){toast(`Questa ricetta è per un altro synth (${r.synth}).`);return}
+  const {n,unknown}=recipeApply(r);
+  log(`Ricetta «${r.nome||"senza nome"}»: ${n} parametri applicati${unknown.length?"; chiavi sconosciute: "+unknown.join(", "):""}.`);
+  toast(`Ricetta «${r.nome||"senza nome"}» inviata al synth (non salvata in memoria)`);
+}
+function exportRecipe(){const r={synth:RECIPE_SYNTH,nome:"",descrizione:"",parametri:recipeState()};download(new TextEncoder().encode(JSON.stringify(r,null,1)),`ricetta_${RECIPE_SYNTH}.json`,"application/json")}
+function initRecipes(){
+  $("#btnRecImport").onclick=()=>$("#recIn").click();
+  $("#recIn").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{applyRecipe(JSON.parse(await f.text()))}catch(err){toast("File di ricetta non valido.")}};
+  $("#btnRecExport").onclick=exportRecipe;loadRecipes();
+}
+const RECIPE_SYNTH="mkxl";
+// chiave = nome del parametro nell'editor (es. t0.f1cut); i tipi di effetto vanno per primi perché cambiano i parametri FX
+function recipeState(){const o={};P.forEach(p=>{if(p.dyn&&ui.get(p.k).box.hidden)return;o[p.k]=getB(p)});return o}
+function recipeApply(r){
+  const unknown=[];let n=0;
+  const e=Object.entries(r.parametri).sort(([a],[b])=>/^fx\dtype$/.test(b)-/^fx\dtype$/.test(a));
+  for(const [k,v] of e){const p=byK.get(k);if(!p||!Number.isFinite(+v)){unknown.push(k);continue}setVal(p,+v,{send:true,force:true,quiet:true});n++}
+  if(r.nome){setName(r.nome);$("#nameIn").value=S.name}
+  $("#lcdInfo").textContent="Ricetta applicata: non ancora salvata sul synth";
+  return {n,unknown};
+}
+
 /* ============ LOG E UTILITÀ ============ */
 const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
 const hx=n=>n.toString(16).padStart(2,"0").toUpperCase();
@@ -807,7 +849,7 @@ function diff(){const a=S.snapA,b=S.snapB;if(!a||!b){toast("Servono entrambe le 
 function init(){
   const ch=$("#selCh");for(let i=1;i<=16;i++)ch.append(el("option",{value:i-1},String(i)));ch.addEventListener("change",()=>S.ch=+ch.value);
   const sp=$("#selProg"),ss=$("#selStart");for(let p=0;p<128;p++){sp.append(el("option",{value:p},progName(p)));ss.append(el("option",{value:p},progName(p)))}sp.onchange=()=>{S.prog=+sp.value;updProg()};
-  buildPanel();initBuffer();renderAll();loadLib();renderLib();renderPlist();loadOpts();updProg();
+  buildPanel();initBuffer();renderAll();loadLib();renderLib();renderPlist();initRecipes();loadOpts();updProg();
   $("#btnConnect").onclick=connect;$("#selIn").onchange=bindPorts;$("#selOut").onchange=bindPorts;
   $("#btnReadEdit").onclick=reqEdit;
   $("#btnReadProg").onclick=()=>reqProg(+$("#selProg").value);

@@ -1,0 +1,12 @@
+{
+ "synth": "take5",
+ "nome": "Prova ricette",
+ "descrizione": "Suono semplice per verificare il meccanismo: un oscillatore a dente di sega, filtro mezzo chiuso, effetti spenti.",
+ "parametri": {
+  "8": 2, "10": 64, "13": 2, "36": 127, "37": 0, "38": 0, "39": 64,
+  "29": 500, "31": 20, "32": 0, "33": 64,
+  "41": 0, "42": 0, "43": 50, "44": 40, "45": 25, "46": 180,
+  "48": 0, "49": 0, "50": 60, "51": 120, "52": 25, "53": 254,
+  "16": 0, "23": 0, "56": 0, "163": 0
+ }
+}

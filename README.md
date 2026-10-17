@@ -12,4 +12,6 @@ Su Android, in Chrome: menu ⋮ → «Installa app» (o il pulsante «Installa»
 | Korg microKORG XL | prima versione | [`mkxl/`](mkxl/index.html) |
 | Moog Little Phatty | prima versione | [`phatty/`](phatty/index.html) |
 
+Le **ricette** (suoni descritti come valori dei parametri, preparati in chat) sono in [`ricette/`](ricette/README.md).
+
 Nessuna build: HTML, CSS e JavaScript scritti a mano. Contesto tecnico e punti aperti: [`CLAUDE.md`](CLAUDE.md). Manuali: [`docs/manuali.md`](docs/manuali.md).

@@ -118,5 +118,12 @@ Ogni editor deve:
   (messaggi che arrivano entro 1,5 s uno dall'altro = un dump), rimandati tali e quali con conferma.
 - Da verificare: lunghezza e struttura dei dump (preset singolo vs banco), scala reale di Bend Up/Down (0-127 nella tabella), nome della porta USB.
 
+## Ricette (suoni preparati in chat) — impostate, da usare dopo la prova degli editor
+- Formato e istruzioni in `ricette/README.md`, chiavi di ogni synth in `ricette/CHIAVI.md` (generato dagli editor: rigenerarlo se cambiano i parametri).
+- Un file JSON per suono `{synth, nome, descrizione, parametri:{chiave:valore}}` + voce in `ricette/index.json`. Chiavi: Take 5 = numero NRPN,
+  microKORG XL = nome del parametro (`t0.f1cut`…; FX: prima `fxNtype`, poi `fxNpK` secondo la EFFECT PARAMETER STRUCTURE), Little Phatty = `cc`+numero.
+- Ogni editor: lista «Ricette» → «Prova» applica e invia come modifiche di parametro (mai scrittura in memoria); «Importa ricetta», «Esporta pannello come ricetta».
+- Francesco ha chiesto di NON preparare suoni finché gli editor non funzionano bene sugli strumenti reali. Le `*-prova.json` servono solo a verificare il meccanismo.
+
 ## Come si lavora
 Claude non può collegarsi agli strumenti: Francesco prova, riporta il log del Laboratorio o il comportamento, e si corregge a iterazioni. Mantenere compatibilità con i file .syx e con i backup .json già esportati.

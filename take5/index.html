@@ -104,6 +104,7 @@ select,input[type=text]{background:#111214;color:var(--legend);border:1px solid 
 .lower{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
 .card{background:var(--panel);border:1px solid #000;border-radius:8px;padding:12px}
 .card h3{margin:0 0 4px;font-size:16px;letter-spacing:.18em;text-transform:uppercase}
+.card h4{margin:14px 0 6px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .card p.hint{margin:0 0 10px;color:var(--dim);font-size:13px;line-height:1.35;font-family:system-ui,sans-serif;max-width:70ch}
 .tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
 .list{display:flex;flex-direction:column;border:1px solid #000;border-radius:6px;overflow:hidden;max-height:460px;overflow-y:auto}
@@ -195,6 +196,10 @@ body.embedded .topbar{display:none}
       <div id="confirmBox"></div>
       <div class="selbar"><span class="cnt" id="selCount">Nessun suono selezionato</span><button type="button" id="btnSelAll">Seleziona tutti</button><button type="button" id="btnSelNone">Nessuno</button><button type="button" id="btnDelSel" class="danger">Elimina selezionati</button></div>
       <div class="list" id="libList"></div>
+      <h4>Ricette</h4>
+      <p class="hint">Una ricetta è l'elenco dei valori dei parametri di un suono, preparato in chat. «Prova» la applica al pannello e la manda al synth, nella zona di modifica: la memoria del synth non cambia finché non salvi. «Esporta pannello come ricetta» salva il suono attuale nello stesso formato.</p>
+      <div class="tools"><button id="btnRecImport">Importa ricetta</button><input type="file" id="recIn" accept=".json,application/json" hidden><button id="btnRecExport">Esporta pannello come ricetta</button></div>
+      <div class="list" id="recList"></div>
     </section>
     <section class="card" data-tab="lab">
       <h3>Laboratorio</h3>
@@ -699,6 +704,43 @@ function download(bytes,name,type="application/octet-stream"){
 }
 const safe=s=>s.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"patch";
 
+/* ============ RICETTE ============ */
+// Una ricetta è un file JSON in ricette/ (elenco in ricette/index.json): {synth, nome, descrizione, parametri:{chiave:valore}}.
+// Le chiavi e i valori sono quelli dell'editor (vedi ricette/README.md); la ricetta si invia come modifiche di parametro, mai come scrittura in memoria.
+async function loadRecipes(){
+  const L=$("#recList");L.innerHTML="";let list=[];
+  try{const r=await fetch("../ricette/index.json",{cache:"no-cache"});if(r.ok)list=(await r.json()).filter(x=>x.synth===RECIPE_SYNTH)}catch(e){}
+  if(!list.length){L.append(el("div",{class:"empty"},"Nessuna ricetta disponibile per questo synth."));return}
+  list.forEach((x,i)=>L.append(el("div",{class:"item"},el("div",{class:"n"},String(i+1).padStart(3,"0")),
+    el("div",{class:"nm"},x.nome,el("small",{},x.descrizione||"")),
+    el("div",{class:"acts"},el("button",{type:"button",title:"Applica al pannello e invia al synth (non salva in memoria)",onclick:()=>fetchRecipe(x.file)},"Prova")))));
+}
+async function fetchRecipe(f){let r;try{const res=await fetch("../ricette/"+f);r=await res.json()}catch(e){toast("Ricetta non disponibile: la prima volta serve la connessione.");return}applyRecipe(r)}
+function applyRecipe(r){
+  if(!r||typeof r.parametri!=="object"){toast("File di ricetta non valido.");return}
+  if(r.synth&&r.synth!==RECIPE_SYNTH){toast(`Questa ricetta è per un altro synth (${r.synth}).`);return}
+  const {n,unknown}=recipeApply(r);
+  log(`Ricetta «${r.nome||"senza nome"}»: ${n} parametri applicati${unknown.length?"; chiavi sconosciute: "+unknown.join(", "):""}.`);
+  toast(`Ricetta «${r.nome||"senza nome"}» inviata al synth (non salvata in memoria)`);
+}
+function exportRecipe(){const r={synth:RECIPE_SYNTH,nome:"",descrizione:"",parametri:recipeState()};download(new TextEncoder().encode(JSON.stringify(r,null,1)),`ricetta_${RECIPE_SYNTH}.json`,"application/json")}
+function initRecipes(){
+  $("#btnRecImport").onclick=()=>$("#recIn").click();
+  $("#recIn").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{applyRecipe(JSON.parse(await f.text()))}catch(err){toast("File di ricetta non valido.")}};
+  $("#btnRecExport").onclick=exportRecipe;loadRecipes();
+}
+const RECIPE_SYNTH="take5";
+// chiave = numero NRPN; il tipo di effetto (17) va per primo perché cambia il significato delle manopole FX
+function recipeState(){const o={};P.forEach(p=>o[p.n]=S.vals[p.n]);return o}
+function recipeApply(r){
+  const unknown=[];let n=0;
+  const e=Object.entries(r.parametri).sort(([a],[b])=>(b==="17")-(a==="17"));
+  for(const [k,v] of e){const p=byN.get(+k);if(!p||!Number.isFinite(+v)){unknown.push(k);continue}setVal(p,+v,{send:true,force:true,quiet:true});n++}
+  if(r.nome){S.name=r.nome;$("#lcdName").textContent=r.nome}
+  $("#lcdInfo").textContent="Ricetta applicata: non ancora salvata sul synth";
+  return {n,unknown};
+}
+
 /* ============ LOG E UTILITÀ ============ */
 const hex=a=>Array.from(a,x=>x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
 function log(m){const L=$("#log");const t=new Date().toTimeString().slice(0,8);L.textContent+=`[${t}] ${m}\n`;L.scrollTop=L.scrollHeight}
@@ -718,7 +760,7 @@ function init(){
   for(const id of ["#selBank","#selBankOut"]){const s=$(id);for(let b=0;b<16;b++)s.append(el("option",{value:b},bankLabel(b)))}
   const sp=$("#selProg");for(let n=0;n<16;n++)sp.append(el("option",{value:n},String(n+1)));
   $("#selBank").addEventListener("change",updSeg);sp.addEventListener("change",updSeg);updSeg();
-  buildPanel();loadDefaults();updateFxLabels();loadLib();renderLib();
+  buildPanel();loadDefaults();updateFxLabels();loadLib();renderLib();initRecipes();
   $("#btnConnect").onclick=connect;$("#selIn").onchange=bindPorts;$("#selOut").onchange=bindPorts;
   $("#btnReadEdit").onclick=reqEdit;
   $("#btnReadProg").onclick=()=>reqProg(+$("#selBank").value,+$("#selProg").value);
