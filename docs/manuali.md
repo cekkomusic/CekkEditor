@@ -10,5 +10,6 @@
 ## Korg microKORG XL
 - Manuale (Google Drive): https://drive.google.com/file/d/1SznfQYJDKvtaaqJddm5txHxUYo91KIuv/view
 - Owner's Manual nel repository: [`Microkorg xl manual.pdf`](Microkorg%20xl%20manual.pdf) (MIDI alle pp. 80-93)
-- MIDI Implementation (formato SysEx): da procurare
+- MIDI Implementation Chart (1 pagina, solo tabella riassuntiva): [`microKORG_XL_MIDIChart_E1.pdf`](microKORG_XL_MIDIChart_E1.pdf)
+- MIDI Implementation completa (formato dei dati SysEx): da procurare
 - Manuale (Korg): https://cdn.korg.com/us/support/download/files/9992be0e2327da2fcc3b4183153868f7.pdf
