@@ -56,10 +56,11 @@ Ogni editor deve:
 
 ## Punti aperti sul Take 5
 - **Mappatura byte del dump → parametri non documentata.** Prima prova reale (21/10): il banco si legge ma si vede solo il nome, l'ipotesi
-  "indice byte = numero NRPN" è sbagliata. Aggiunto nel Laboratorio «Impara la mappa del dump» (`learnMap`): per ogni parametro invia via NRPN due valori di prova,
-  rilegge l'edit buffer dopo ciascuno e accetta solo i byte che contengono ENTRAMBI i valori (anche coppia LE/BE, byte con scarto costante, bit per gli
-  interruttori); i byte candidati per più di 3 parametri (es. «ultimo valore ricevuto») vengono esclusi. Alla fine ripristina il suono di partenza.
-  Prima prova reale: il synth smetteva di rispondere dopo ~8 parametri (versione senza ritentativi) e 2 posizioni erano coincidenze (Arp On=2, Repeat=4).
+  "indice byte = numero NRPN" è sbagliata. Nel Laboratorio «Impara la mappa del dump» (`learnMap`, versione d): 12 giri; in ogni giro tutti i parametri
+  ricevono via NRPN un valore casuale (interruttori: sequenza unica = numero d'ordine in binario) e si legge un solo edit buffer; ogni parametro si riconosce
+  dalla sua sequenza di 12 valori (byte, coppia LE/BE, byte con scarto costante, bit solo in byte di soli interruttori). Totale 14 dump, poi ripristino.
+  Prove reali precedenti (una lettura per parametro): dopo ~7 letture ravvicinate il synth (o la USB del telefono) smetteva del tutto di rispondere alle
+  richieste SysEx, anche minuti dopo. Il dump letto è di 4102 byte (il documento dice 4096 → 4693 compressi). «Test letture» fa 10 richieste a 1 s per diagnosi.
   La mappa sta in localStorage `take5-dumpmap-v1` e si copia con «Copia mappa» (testo «MAPPA TAKE 5 {...}»): quando Francesco la incolla in chat,
   va resa predefinita nell'editor.
 - Posizione del nome del programma nel dump: per ora stimata cercando la prima stringa ASCII.
