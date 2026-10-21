@@ -205,7 +205,7 @@ body.embedded .topbar{display:none}
     </section>
     <section class="card" data-tab="lab">
       <h3>Laboratorio</h3>
-      <p class="hint">Il Take 5 non documenta dove stanno i parametri dentro il dump: per questo, leggendo un suono, si vede solo il nome. «Impara la mappa del dump» lo scopre da solo: cambia via MIDI un parametro alla volta del suono attuale, lo rilegge e guarda quale byte è cambiato (circa un minuto), poi ripristina il suono di partenza. Dopo, i suoni letti dal synth compaiono nel pannello. «Copia mappa» la copia per incollarla nella chat.</p>
+      <p class="hint">Il Take 5 non documenta dove stanno i parametri dentro il dump: per questo, leggendo un suono, si vede solo il nome. «Impara la mappa del dump» lo scopre da solo: cambia via MIDI un parametro alla volta del suono attuale, lo rilegge e guarda quale byte è cambiato (uno o due minuti), poi ripristina il suono di partenza. Dopo, i suoni letti dal synth compaiono nel pannello. «Copia mappa» la copia per incollarla nella chat.</p>
       <div class="tools">
         <button id="btnLearn" class="primary">Impara la mappa del dump</button>
         <button id="btnCopyMap">Copia mappa</button>
@@ -638,7 +638,15 @@ function saveMap(){try{localStorage.setItem(LSM,JSON.stringify(S.map))}catch(e){
 function updMapState(){const n=S.map?Object.keys(S.map).length:0;$("#mapState").textContent=n?`Mappa: ${n} parametri noti`:"Mappa non ancora imparata"}
 const nrpnMsg=(n,v)=>{const st=0xB0|S.ch;return [st,99,(n>>7)&127,st,98,n&127,st,6,(v>>7)&127,st,38,v&127]};
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
-async function readEdit(){const pr=waitPatch(3000);reqEdit();const r=await pr;return {u:unpack(r.packed),packed:r.packed}}
+// lettura robusta: fino a 3 richieste, con attesa crescente; i dump arrivati in ritardo vengono scartati
+async function readEdit(what){
+  for(let t=1;t<=3;t++){
+    S.waiters=[];const pr=waitPatch(2500+t*1500);reqEdit();
+    try{const r=await pr;return {u:unpack(r.packed),packed:r.packed}}
+    catch(e){log(`Mappa: nessuna risposta all'edit buffer${what?" ("+what+")":""}, tentativo ${t}/3.`);await pause(400*t)}
+  }
+  throw new Error("timeout");
+}
 function findOffset(a,b,v,wide){
   const ch=[];for(let i=0;i<b.length;i++)if(a[i]!==b[i])ch.push(i);
   for(const i of ch){
@@ -651,15 +659,15 @@ function probes(p){const span=p.max-p.min;if(span<=1)return [p.max,p.min];return
 function askLearn(){
   if(!S.out||!S.in){toast("Collega prima il MIDI.");return}
   const box=$("#learnBox");box.innerHTML="";
-  box.append(el("div",{class:"confirm"},el("span",{style:"flex:1 1 240px"},"Per circa un minuto l'editor cambierà uno alla volta tutti i parametri del suono attuale del Take 5 (solo nella zona di modifica, non in memoria) e alla fine lo ripristinerà. Non suonare e non toccare il synth. Sul Take 5 deve essere MIDI Param Receive = NRPN."),
+  box.append(el("div",{class:"confirm"},el("span",{style:"flex:1 1 240px"},"Per uno o due minuti l'editor cambierà uno alla volta tutti i parametri del suono attuale del Take 5 (solo nella zona di modifica, non in memoria) e alla fine lo ripristinerà. Non suonare e non toccare il synth. Sul Take 5 deve essere MIDI Param Receive = NRPN."),
     el("button",{type:"button",class:"primary",onclick:()=>{box.innerHTML="";learnMap()}},"Avvia"),
     el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));
 }
 async function learnMap(){
-  S.learning=true;$("#btnLearn").disabled=true;
+  S.learning=true;S.learnGap=200;$("#btnLearn").disabled=true;
   const map={},miss=[];let orig;
   try{
-    orig=await readEdit();let prev=orig.u;
+    orig=await readEdit("suono di partenza");let prev=orig.u;
     log(`Mappa: suono di partenza letto (${orig.u.length} byte). Inizio.`);
     const list=P.filter(p=>!p.perf);
     for(let i=0;i<list.length;i++){
@@ -667,8 +675,8 @@ async function learnMap(){
       $("#lcdInfo").textContent=`Mappa del dump: ${i+1}/${list.length} · ${p.l}`;
       const tries=[];
       for(const v of probes(p)){
-        send(nrpnMsg(p.n,v));await pause(60);
-        const cur=(await readEdit()).u;const r=findOffset(prev,cur,v,wide);prev=cur;lastCh=r.ch;tries.push({v,ch:r.ch,b:cur});
+        send(nrpnMsg(p.n,v));await pause(S.learnGap);
+        const cur=(await readEdit(`${p.l}, NRPN ${p.n}`)).u;const r=findOffset(prev,cur,v,wide);prev=cur;lastCh=r.ch;tries.push({v,ch:r.ch,b:cur});
         if(r.m){found=r.m;break}
       }
       // un solo byte cambiato ma con un valore spostato (es. BPM salvato come valore − 30): si ricava lo scarto dalle due prove
@@ -676,9 +684,10 @@ async function learnMap(){
         const o=tries[0].ch[0],add=tries[0].b[o]-tries[0].v;
         if(tries[1].b[o]-tries[1].v===add)found={o,w:1,add};
       }
+      if(i%10===9)log(`Mappa: ${i+1}/${list.length} parametri provati, ${Object.keys(map).length+(found?1:0)} trovati.`);
       if(found){map[p.n]=found}else miss.push(`${p.l} (NRPN ${p.n}${lastCh.length?", byte cambiati "+lastCh.slice(0,6).join("/"):""})`);
     }
-  }catch(e){log("Mappa interrotta: il synth non risponde alla richiesta dell'edit buffer. Controlla in Global: MIDI Sysex On = On e Sysex Cable = USB.")}
+  }catch(e){log(`Mappa interrotta: dopo 3 tentativi il synth non ha risposto. Parametri già trovati: ${Object.keys(map).length} (vengono comunque salvati).`)}
   if(orig){send([...HDR,0x03,...orig.packed,0xF7]);await pause(200)}
   S.learning=false;$("#btnLearn").disabled=false;
   const n=Object.keys(map).length;
