@@ -877,7 +877,7 @@ function init(){
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
     if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
-  log("Editor pronto. Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
+  log("Editor pronto (versione 2026-10-21b). Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }
 init();

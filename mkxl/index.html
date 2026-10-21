@@ -873,7 +873,7 @@ function init(){
   addEventListener("resize",()=>{const cur=document.querySelector("#tabs button[aria-pressed=true]");if(cur)showTab(cur.dataset.t)});
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
     if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
-  log("Editor pronto. Sul microKORG XL: MIDI › ROUTING = USB o MIDI+USB, MIDI FLT › SYS EX = ENABLE; per scrivere programmi GLOBAL › PROTECT = OFF. Il canale qui deve essere il canale globale del synth.");
+  log("Editor pronto (versione 2026-10-21b). Sul microKORG XL: MIDI › ROUTING = USB o MIDI+USB, MIDI FLT › SYS EX = ENABLE; per scrivere programmi GLOBAL › PROTECT = OFF. Il canale qui deve essere il canale globale del synth.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }
 init();

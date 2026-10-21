@@ -579,7 +579,7 @@ function init(){
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
     if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
-  log("Editor pronto. Sul Little Phatty, MASTER › MIDI SETUP: ingresso e uscita USB (o DIN/USB), canali uguali a quello scelto qui. Il synth non comunica i valori del preset: il pannello li impara quando giri le manopole.");
+  log("Editor pronto (versione 2026-10-21b). Sul Little Phatty, MASTER › MIDI SETUP: ingresso e uscita USB (o DIN/USB), canali uguali a quello scelto qui. Il synth non comunica i valori del preset: il pannello li impara quando giri le manopole.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }
 init();
