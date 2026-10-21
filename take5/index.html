@@ -598,7 +598,7 @@ function guessName(u){
   for(let i=0;i<=u.length;i++){const c=i<u.length?u[i]:0;if(c>=32&&c<127){cur+=String.fromCharCode(c)}else{if(cur.trim().length>=4&&/[A-Za-z]/.test(cur)&&cur.length<=24){best=cur.trim();break}cur=""}}
   return best;
 }
-function mapValue(u,m){let v=m.w===2?(m.le?u[m.o]|(u[m.o+1]<<8):(u[m.o]<<8)|u[m.o+1]):u[m.o];return v-(m.add||0)}
+function mapValue(u,m){if(m.bit!=null)return (u[m.o]>>m.bit)&1;let v=m.w===2?(m.le?u[m.o]|(u[m.o+1]<<8):(u[m.o]<<8)|u[m.o+1]):u[m.o];return v-(m.add||0)}
 function applyDump(u){
   // con la mappa imparata dal synth si usano solo posizioni verificate
   if(S.map&&Object.keys(S.map).length){
@@ -647,13 +647,19 @@ async function readEdit(what){
   }
   throw new Error("timeout");
 }
-function findOffset(a,b,v,wide){
-  const ch=[];for(let i=0;i<b.length;i++)if(a[i]!==b[i])ch.push(i);
+const enc=(b,o,w,le)=>w===2?(le?b[o]|(b[o+1]<<8):(b[o]<<8)|b[o+1]):b[o];
+// cerca i byte che contengono ENTRAMBI i valori di prova (t1.v dopo la prima, t2.v dopo la seconda): così si scartano le coincidenze
+function verify(before,t1,t2,p){
+  const wide=p.max>255,span=p.max-p.min,cands=[],ch=[];
+  for(let i=0;i<t2.b.length;i++)if(before[i]!==t1.b[i]||t1.b[i]!==t2.b[i])ch.push(i);
   for(const i of ch){
-    if(!wide&&b[i]===v)return {m:{o:i,w:1},ch};
-    if(wide){for(const o of [i,i-1]){if(o<0)continue;if((b[o]|(b[o+1]<<8))===v)return {m:{o,w:2,le:1},ch};if(((b[o]<<8)|b[o+1])===v)return {m:{o,w:2,le:0},ch}}}
+    if(wide){for(const o of [i,i-1])if(o>=0)for(const le of [1,0])if(enc(t1.b,o,2,le)===t1.v&&enc(t2.b,o,2,le)===t2.v)cands.push({o,w:2,le});continue}
+    if(t1.b[i]===t1.v&&t2.b[i]===t2.v){cands.push({o:i,w:1});continue}
+    const add=t1.b[i]-t1.v;if(add!==0&&t2.b[i]-t2.v===add){cands.push({o:i,w:1,add});continue}
+    // interruttori salvati come un bit dentro un byte
+    if(span<=1){const x=t1.b[i]^t2.b[i];for(let k=0;k<8;k++)if(x===1<<k&&((t1.b[i]>>k)&1)===t1.v&&((t2.b[i]>>k)&1)===t2.v)cands.push({o:i,w:1,bit:k})}
   }
-  return {m:null,ch};
+  return {cands,ch};
 }
 function probes(p){const span=p.max-p.min;if(span<=1)return [p.max,p.min];return [p.min+Math.max(1,Math.round(span*.37)),p.min+Math.max(2,Math.round(span*.71))]}
 function askLearn(){
@@ -665,29 +671,29 @@ function askLearn(){
 }
 async function learnMap(){
   S.learning=true;S.learnGap=200;$("#btnLearn").disabled=true;
-  const map={},miss=[];let orig;
+  const map={},miss=[],all=[];let orig;
   try{
     orig=await readEdit("suono di partenza");let prev=orig.u;
     log(`Mappa: suono di partenza letto (${orig.u.length} byte). Inizio.`);
     const list=P.filter(p=>!p.perf);
     for(let i=0;i<list.length;i++){
-      const p=list[i],wide=p.max>255;let found=null,lastCh=[];
+      const p=list[i];
       $("#lcdInfo").textContent=`Mappa del dump: ${i+1}/${list.length} · ${p.l}`;
       const tries=[];
-      for(const v of probes(p)){
-        send(nrpnMsg(p.n,v));await pause(S.learnGap);
-        const cur=(await readEdit(`${p.l}, NRPN ${p.n}`)).u;const r=findOffset(prev,cur,v,wide);prev=cur;lastCh=r.ch;tries.push({v,ch:r.ch,b:cur});
-        if(r.m){found=r.m;break}
-      }
-      // un solo byte cambiato ma con un valore spostato (es. BPM salvato come valore − 30): si ricava lo scarto dalle due prove
-      if(!found&&!wide&&tries.length===2&&tries.every(t=>t.ch.length===1)&&tries[0].ch[0]===tries[1].ch[0]){
-        const o=tries[0].ch[0],add=tries[0].b[o]-tries[0].v;
-        if(tries[1].b[o]-tries[1].v===add)found={o,w:1,add};
-      }
-      if(i%10===9)log(`Mappa: ${i+1}/${list.length} parametri provati, ${Object.keys(map).length+(found?1:0)} trovati.`);
-      if(found){map[p.n]=found}else miss.push(`${p.l} (NRPN ${p.n}${lastCh.length?", byte cambiati "+lastCh.slice(0,6).join("/"):""})`);
+      for(const v of probes(p)){send(nrpnMsg(p.n,v));await pause(S.learnGap);tries.push({v,b:(await readEdit(`${p.l}, NRPN ${p.n}`)).u})}
+      const r=verify(prev,tries[0],tries[1],p);prev=tries[1].b;all.push({p,cands:r.cands,ch:r.ch});
+      if(i%10===9)log(`Mappa: ${i+1}/${list.length} parametri provati.`);
     }
-  }catch(e){log(`Mappa interrotta: dopo 3 tentativi il synth non ha risposto. Parametri già trovati: ${Object.keys(map).length} (vengono comunque salvati).`)}
+  }catch(e){log(`Mappa interrotta: dopo 3 tentativi il synth non ha risposto. Parametri provati: ${all.length} (quelli trovati vengono comunque salvati).`)}
+  // un byte che è candidato per molti parametri diversi (es. «ultimo valore ricevuto») non è la posizione di nessuno
+  const key=c=>c.bit!=null?c.o+"."+c.bit:String(c.o),freq={};for(const a of all)for(const k of new Set(a.cands.map(key)))freq[k]=(freq[k]||0)+1;
+  const decoys=Object.keys(freq).filter(o=>freq[o]>3);
+  if(decoys.length)log(`Mappa: byte esclusi perché cambiano con qualsiasi parametro: ${decoys.join(", ")}.`);
+  for(const a of all){
+    const ok=a.cands.filter(c=>freq[key(c)]<=3).sort((x,y)=>(freq[key(x)]-freq[key(y)])||((x.add!=null||x.bit!=null)-(y.add!=null||y.bit!=null)));
+    if(ok.length){map[a.p.n]=ok[0];if(ok.length>1)log(`Mappa: ${a.p.l} (NRPN ${a.p.n}) aveva ${ok.length} posizioni possibili, scelta la ${ok[0].o}.`)}
+    else miss.push(`${a.p.l} (NRPN ${a.p.n}${a.ch.length?", byte cambiati "+a.ch.slice(0,6).join("/"):""})`);
+  }
   if(orig){send([...HDR,0x03,...orig.packed,0xF7]);await pause(200)}
   S.learning=false;$("#btnLearn").disabled=false;
   const n=Object.keys(map).length;
@@ -877,7 +883,7 @@ function init(){
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
     if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
-  log("Editor pronto (versione 2026-10-21b). Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
+  log("Editor pronto (versione 2026-10-21c). Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }
 init();

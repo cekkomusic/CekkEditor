@@ -57,7 +57,9 @@ Ogni editor deve:
 ## Punti aperti sul Take 5
 - **Mappatura byte del dump → parametri non documentata.** Prima prova reale (21/10): il banco si legge ma si vede solo il nome, l'ipotesi
   "indice byte = numero NRPN" è sbagliata. Aggiunto nel Laboratorio «Impara la mappa del dump» (`learnMap`): per ogni parametro invia via NRPN due valori di prova,
-  rilegge l'edit buffer e cerca il byte (o la coppia LE/BE, o un byte con scarto costante) che li contiene; alla fine ripristina il suono di partenza.
+  rilegge l'edit buffer dopo ciascuno e accetta solo i byte che contengono ENTRAMBI i valori (anche coppia LE/BE, byte con scarto costante, bit per gli
+  interruttori); i byte candidati per più di 3 parametri (es. «ultimo valore ricevuto») vengono esclusi. Alla fine ripristina il suono di partenza.
+  Prima prova reale: il synth smetteva di rispondere dopo ~8 parametri (versione senza ritentativi) e 2 posizioni erano coincidenze (Arp On=2, Repeat=4).
   La mappa sta in localStorage `take5-dumpmap-v1` e si copia con «Copia mappa» (testo «MAPPA TAKE 5 {...}»): quando Francesco la incolla in chat,
   va resa predefinita nell'editor.
 - Posizione del nome del programma nel dump: per ora stimata cercando la prima stringa ASCII.
