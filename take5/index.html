@@ -210,6 +210,7 @@ body.embedded .topbar{display:none}
         <button id="btnLearn" class="primary">Impara la mappa del dump</button>
         <button id="btnCopyMap">Copia mappa</button>
         <button id="btnTest">Test letture</button>
+        <button id="btnTestN">Test letture con NRPN</button>
         <button id="btnClearMap" class="danger">Azzera mappa</button>
         <span class="status" id="mapState"></span>
       </div>
@@ -562,6 +563,7 @@ function onMidi(ev){
   const d=ev.data;blink();
   if(d[0]===0xF0){onSysex(d);return}
   const st=d[0]&0xF0;
+  if(st===0xB0)S.ccIn=(S.ccIn||0)+1;
   if(st===0xB0){
     const cc=d[1],v=d[2],r=S.rx;
     if(cc===99)r.pm=v;else if(cc===98)r.pl=v;else if(cc===6)r.vm=v;
@@ -678,7 +680,7 @@ async function learnMap(){
   // interruttori: sequenza unica per costruzione = numero d'ordine in binario (mai tutta uguale)
   const sw=new Map(list.filter(p=>p.max-p.min<=1).map((p,j)=>[p.n,j+1]));
   try{
-    orig=await readEdit("suono di partenza");
+    S.ccIn=0;orig=await readEdit("suono di partenza");
     log(`Mappa: suono di partenza letto (${orig.u.length} byte). ${ROUNDS} giri da ${list.length} parametri.`);
     for(let r=0;r<ROUNDS;r++){
       $("#lcdInfo").textContent=`Mappa del dump: giro ${r+1}/${ROUNDS}`;
@@ -687,7 +689,7 @@ async function learnMap(){
       for(let i=0;i<order.length;i+=10){const b=[];for(const p of order.slice(i,i+10)){let v;if(p.max-p.min<=1)v=p.min+((sw.get(p.n)>>r)&1);else do{v=p.min+Math.floor(Math.random()*(p.max-p.min+1))}while(p.max-p.min>1&&r>0&&v===codes.get(p.n)[r-1]);codes.get(p.n).push(v);b.push(...nrpnMsg(p.n,v))}send(b);await pause(30)}
       await pause(S.learnGap);
       dumps.push((await readEdit(`giro ${r+1}`)).u);
-      log(`Mappa: giro ${r+1}/${ROUNDS} letto.`);
+      log(`Mappa: giro ${r+1}/${ROUNDS} letto; messaggi CC rimandati dal synth finora: ${S.ccIn||0}.`);
       await pause(S.learnGap);
     }
     // i bit valgono solo nei byte fatti di soli interruttori: ogni bit che cambia in quel byte deve essere candidato di qualche interruttore
@@ -708,17 +710,21 @@ async function learnMap(){
   else{$("#lcdInfo").textContent="Mappa non imparata";toast("Mappa non imparata: guarda il log del Laboratorio")}
 }
 // diagnosi: 10 letture dell'edit buffer a un secondo di distanza, senza cambiare nulla
-async function testReads(){
+// con nrpn=true, prima di ogni lettura invia un parametro innocuo (Arp Relatch acceso/spento) per vedere se sono gli NRPN a bloccare
+async function testReads(nrpn){
   if(!S.out||!S.in){toast("Collega prima il MIDI.");return}
-  S.learning=true;$("#btnTest").disabled=true;let ok=0;
+  S.learning=true;$("#btnTest").disabled=true;$("#btnTestN").disabled=true;let ok=0;S.ccIn=0;
+  log(`Test letture${nrpn?" con NRPN":""}: inizio.`);
   for(let i=1;i<=10;i++){
+    if(nrpn){send(nrpnMsg(168,i&1));await pause(300)}
     $("#lcdInfo").textContent=`Test letture: ${i}/10`;const t0=performance.now();
     S.waiters=[];const pr=waitPatch(4000);reqEdit();
-    try{const r=await pr;ok++;log(`Test ${i}/10: risposta in ${Math.round(performance.now()-t0)} ms, ${r.packed.length} byte.`)}
+    try{const r=await pr;ok++;log(`Test ${i}/10: risposta in ${Math.round(performance.now()-t0)} ms, ${r.packed.length} byte; CC ricevuti dal synth: ${S.ccIn}.`)}
     catch(e){log(`Test ${i}/10: nessuna risposta entro 4 s.`)}
     await pause(1000);
   }
-  S.learning=false;$("#btnTest").disabled=false;$("#lcdInfo").textContent=`Test letture: ${ok}/10 risposte`;toast(`Test letture: ${ok}/10 risposte`);
+  if(nrpn)send(nrpnMsg(168,0));
+  S.learning=false;$("#btnTest").disabled=false;$("#btnTestN").disabled=false;$("#lcdInfo").textContent=`Test letture: ${ok}/10 risposte`;toast(`Test letture: ${ok}/10 risposte`);log(`Test letture${nrpn?" con NRPN":""}: ${ok}/10 risposte, CC ricevuti dal synth: ${S.ccIn}.`);
 }
 function copyMap(){
   if(!S.map){toast("Prima impara la mappa.");return}
@@ -897,13 +903,13 @@ function init(){
   $("#btnSelAll").onclick=()=>{S.lib.forEach(x=>S.sel.add(x));renderLib()};$("#btnSelNone").onclick=()=>{S.sel.clear();renderLib()};
   $("#btnDelSel").onclick=()=>{const n=S.sel.size;if(!n)return;confirmBox(`Eliminare i ${n} suoni selezionati dalla libreria di questo browser?`,()=>{S.lib=S.lib.filter(x=>!S.sel.has(x));S.sel.clear();saveLib();renderLib()})};
   loadMap();$("#btnLearn").onclick=askLearn;$("#btnCopyMap").onclick=copyMap;
-  $("#btnTest").onclick=testReads;
+  $("#btnTest").onclick=()=>testReads(false);$("#btnTestN").onclick=()=>testReads(true);
   $("#btnClearMap").onclick=()=>{S.map=null;try{localStorage.removeItem(LSM)}catch(e){}updMapState();toast("Mappa azzerata")};
   $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
     if(!HOST.access)log("MIDI non ancora collegato: torna alla schermata iniziale e premi «Collega MIDI».")}
-  log("Editor pronto (versione 2026-10-21d). Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
+  log("Editor pronto (versione 2026-10-21e). Sul Take 5 imposta in Global: MIDI Param Send = NRPN, MIDI Param Receive = NRPN, MIDI Sysex On = On, MIDI Sysex Cable = USB, MIDI Out Select = USB o ALL.");
   if(!navigator.requestMIDIAccess)log("Attenzione: questo browser non ha Web MIDI. Usa Chrome o Edge.");
 }
 init();

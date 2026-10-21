@@ -60,7 +60,9 @@ Ogni editor deve:
   ricevono via NRPN un valore casuale (interruttori: sequenza unica = numero d'ordine in binario) e si legge un solo edit buffer; ogni parametro si riconosce
   dalla sua sequenza di 12 valori (byte, coppia LE/BE, byte con scarto costante, bit solo in byte di soli interruttori). Totale 14 dump, poi ripristino.
   Prove reali precedenti (una lettura per parametro): dopo ~7 letture ravvicinate il synth (o la USB del telefono) smetteva del tutto di rispondere alle
-  richieste SysEx, anche minuti dopo. Il dump letto è di 4102 byte (il documento dice 4096 → 4693 compressi). «Test letture» fa 10 richieste a 1 s per diagnosi.
+  richieste SysEx, anche minuti dopo. Il dump letto è di 4102 byte (il documento dice 4096 → 4693 compressi). «Test letture» fa 10 richieste a 1 s; «Test letture con NRPN» manda prima di ognuna un NRPN innocuo (168 Relatch); entrambi contano i CC che il synth rimanda.
+  Prova reale versione d (21/10 22:27): 6 giri su 12 letti, poi il synth smette di rispondere finché non si ricollega il cavo. Lettura di un banco (16 dump, senza NRPN) invece funzionava:
+  sospetto che la combinazione NRPN in ingresso + dump in uscita blocchi la USB (forse il synth rimanda gli NRPN con Param Send = NRPN). In attesa dei due test.
   La mappa sta in localStorage `take5-dumpmap-v1` e si copia con «Copia mappa» (testo «MAPPA TAKE 5 {...}»): quando Francesco la incolla in chat,
   va resa predefinita nell'editor.
 - Posizione del nome del programma nel dump: per ora stimata cercando la prima stringa ASCII.
