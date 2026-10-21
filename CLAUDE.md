@@ -55,7 +55,11 @@ Ogni editor deve:
   con valori a 7 bit; l'editor usa gli NRPN. Richiesta globali `F0 01 35 0E F7` (dump solo in uscita, i globali si cambiano via NRPN).
 
 ## Punti aperti sul Take 5
-- **Mappatura byte del dump → parametri non documentata.** L'editor ipotizza "indice byte = numero NRPN" (cutoff = byte 29 LSB + 30 MSB) e la scarta se più di 4 valori escono di scala. Va verificata con il Laboratorio (istantanea A/B + confronta).
+- **Mappatura byte del dump → parametri non documentata.** Prima prova reale (21/10): il banco si legge ma si vede solo il nome, l'ipotesi
+  "indice byte = numero NRPN" è sbagliata. Aggiunto nel Laboratorio «Impara la mappa del dump» (`learnMap`): per ogni parametro invia via NRPN due valori di prova,
+  rilegge l'edit buffer e cerca il byte (o la coppia LE/BE, o un byte con scarto costante) che li contiene; alla fine ripristina il suono di partenza.
+  La mappa sta in localStorage `take5-dumpmap-v1` e si copia con «Copia mappa» (testo «MAPPA TAKE 5 {...}»): quando Francesco la incolla in chat,
+  va resa predefinita nell'editor.
 - Posizione del nome del programma nel dump: per ora stimata cercando la prima stringa ASCII.
 - Chiarito con la User's Guide 2.3 (`docs/Take-5-Users-Guide-v2_3.pdf`): 12 tipi di effetto (Stereo Delay…Lo-Fi, ordine e nomi delle 3 manopole come nell'editor),
   5 modi arpeggio (Up, Down, Up+Down, Random, Assign), 20 sorgenti e 58 destinazioni di modulazione (0-57, appendici A/B), forme LFO Tri/Saw/RevSaw/Square/S&H,

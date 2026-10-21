@@ -205,7 +205,15 @@ body.embedded .topbar{display:none}
     </section>
     <section class="card" data-tab="lab">
       <h3>Laboratorio</h3>
-      <p class="hint">Serve a verificare il formato dei dump. Leggi il suono dal synth, premi «Istantanea A», cambia un solo parametro sullo strumento, rileggi e premi «Istantanea B»: «Confronta» mostra quali byte sono cambiati. Copia il risultato e incollalo nella chat per affinare l'editor.</p>
+      <p class="hint">Il Take 5 non documenta dove stanno i parametri dentro il dump: per questo, leggendo un suono, si vede solo il nome. «Impara la mappa del dump» lo scopre da solo: cambia via MIDI un parametro alla volta del suono attuale, lo rilegge e guarda quale byte è cambiato (circa un minuto), poi ripristina il suono di partenza. Dopo, i suoni letti dal synth compaiono nel pannello. «Copia mappa» la copia per incollarla nella chat.</p>
+      <div class="tools">
+        <button id="btnLearn" class="primary">Impara la mappa del dump</button>
+        <button id="btnCopyMap">Copia mappa</button>
+        <button id="btnClearMap" class="danger">Azzera mappa</button>
+        <span class="status" id="mapState"></span>
+      </div>
+      <div id="learnBox"></div>
+      <p class="hint">Per controlli a mano: leggi il suono, «Istantanea A», cambia un solo parametro sullo strumento, rileggi, «Istantanea B», «Confronta».</p>
       <div class="tools">
         <button id="btnSnapA">Istantanea A</button>
         <button id="btnSnapB">Istantanea B</button>
@@ -573,6 +581,7 @@ function onSysex(d){
   else log(`SysEx Take 5 comando 0x${cmd.toString(16)} (${d.length} byte)`);
 }
 function receivedPatch(packed,bank,prog,kind){
+  if(S.learning){const w=S.waiters.shift();if(w)w({packed,bank,prog});return}
   S.lastPacked=packed;S.lastBank=bank;S.lastProg=prog;
   if(bank!=null){$("#selBank").value=bank;$("#selProg").value=prog;updSeg()}
   const u=unpack(packed);const nm=guessName(u);
@@ -589,8 +598,15 @@ function guessName(u){
   for(let i=0;i<=u.length;i++){const c=i<u.length?u[i]:0;if(c>=32&&c<127){cur+=String.fromCharCode(c)}else{if(cur.trim().length>=4&&/[A-Za-z]/.test(cur)&&cur.length<=24){best=cur.trim();break}cur=""}}
   return best;
 }
+function mapValue(u,m){let v=m.w===2?(m.le?u[m.o]|(u[m.o+1]<<8):(u[m.o]<<8)|u[m.o+1]):u[m.o];return v-(m.add||0)}
 function applyDump(u){
-  // Ipotesi: il byte di indice N corrisponde all'NRPN N (cutoff = 29 LSB + 30 MSB)
+  // con la mappa imparata dal synth si usano solo posizioni verificate
+  if(S.map&&Object.keys(S.map).length){
+    let n=0,bad=[];
+    for(const k in S.map){const p=byN.get(+k),m=S.map[k];if(!p)continue;const v=mapValue(u,m);if(v<p.min||v>p.hi){bad.push(p.l+"="+v);continue}setVal(p,v,{quiet:true});n++}
+    log(`Pannello aggiornato dal dump con la mappa imparata: ${n} parametri${bad.length?`, fuori scala: ${bad.slice(0,10).join(", ")}`:""}.`);return;
+  }
+  // Ipotesi iniziale: il byte di indice N corrisponde all'NRPN N (cutoff = 29 LSB + 30 MSB)
   let bad=0,ok=0;const nv={};
   for(const p of P){
     if(p.n>=u.length||p.n>=256)continue;
@@ -601,7 +617,7 @@ function applyDump(u){
     if(v<p.min||v>p.hi){bad++;continue}
     nv[p.n]=v;ok++;
   }
-  if(bad>4){log(`Mappatura dump→pannello NON coerente (${bad} valori fuori scala): il pannello non è stato aggiornato. Usa il Laboratorio per individuare i byte giusti.`);$("#lcdInfo").textContent+=" · valori non letti";return}
+  if(bad>4){log(`Mappatura dump→pannello NON coerente (${bad} valori fuori scala): il pannello non è stato aggiornato. Usa «Impara la mappa del dump» nel Laboratorio.`);$("#lcdInfo").textContent+=" · valori non letti";return}
   for(const n in nv)setVal(byN.get(+n),nv[n],{quiet:true});
   log(`Pannello aggiornato dal dump (${ok} parametri, ${bad} fuori scala; Pitch Osc non letti). Mappatura sperimentale: verifica a orecchio.`);
 }
@@ -612,6 +628,69 @@ function reqProg(bank,prog){send([...HDR,0x05,bank,prog,0xF7])}
 function waitPatch(ms=2500){return new Promise((res,rej)=>{const w=x=>{clearTimeout(t);res(x)};const t=setTimeout(()=>{S.waiters=S.waiters.filter(f=>f!==w);rej(new Error("timeout"))},ms);S.waiters.push(w)})}
 const editMsg=p=>[...HDR,0x03,...p,0xF7];
 const progMsg=(p,b,n)=>[...HDR,0x02,b,n,...p,0xF7];
+
+/* ============ MAPPA DEL DUMP ============ */
+// Il formato del programma (4096 byte) non è documentato: l'editor cambia un parametro alla volta via NRPN,
+// rilegge l'edit buffer e cerca il byte (o la coppia di byte) che ora contiene quel valore.
+const LSM="take5-dumpmap-v1";
+function loadMap(){try{S.map=JSON.parse(localStorage.getItem(LSM)||"null")}catch(e){S.map=null}updMapState()}
+function saveMap(){try{localStorage.setItem(LSM,JSON.stringify(S.map))}catch(e){}updMapState()}
+function updMapState(){const n=S.map?Object.keys(S.map).length:0;$("#mapState").textContent=n?`Mappa: ${n} parametri noti`:"Mappa non ancora imparata"}
+const nrpnMsg=(n,v)=>{const st=0xB0|S.ch;return [st,99,(n>>7)&127,st,98,n&127,st,6,(v>>7)&127,st,38,v&127]};
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function readEdit(){const pr=waitPatch(3000);reqEdit();const r=await pr;return {u:unpack(r.packed),packed:r.packed}}
+function findOffset(a,b,v,wide){
+  const ch=[];for(let i=0;i<b.length;i++)if(a[i]!==b[i])ch.push(i);
+  for(const i of ch){
+    if(!wide&&b[i]===v)return {m:{o:i,w:1},ch};
+    if(wide){for(const o of [i,i-1]){if(o<0)continue;if((b[o]|(b[o+1]<<8))===v)return {m:{o,w:2,le:1},ch};if(((b[o]<<8)|b[o+1])===v)return {m:{o,w:2,le:0},ch}}}
+  }
+  return {m:null,ch};
+}
+function probes(p){const span=p.max-p.min;if(span<=1)return [p.max,p.min];return [p.min+Math.max(1,Math.round(span*.37)),p.min+Math.max(2,Math.round(span*.71))]}
+function askLearn(){
+  if(!S.out||!S.in){toast("Collega prima il MIDI.");return}
+  const box=$("#learnBox");box.innerHTML="";
+  box.append(el("div",{class:"confirm"},el("span",{style:"flex:1 1 240px"},"Per circa un minuto l'editor cambierà uno alla volta tutti i parametri del suono attuale del Take 5 (solo nella zona di modifica, non in memoria) e alla fine lo ripristinerà. Non suonare e non toccare il synth. Sul Take 5 deve essere MIDI Param Receive = NRPN."),
+    el("button",{type:"button",class:"primary",onclick:()=>{box.innerHTML="";learnMap()}},"Avvia"),
+    el("button",{type:"button",onclick:()=>box.innerHTML=""},"Annulla")));
+}
+async function learnMap(){
+  S.learning=true;$("#btnLearn").disabled=true;
+  const map={},miss=[];let orig;
+  try{
+    orig=await readEdit();let prev=orig.u;
+    log(`Mappa: suono di partenza letto (${orig.u.length} byte). Inizio.`);
+    const list=P.filter(p=>!p.perf);
+    for(let i=0;i<list.length;i++){
+      const p=list[i],wide=p.max>255;let found=null,lastCh=[];
+      $("#lcdInfo").textContent=`Mappa del dump: ${i+1}/${list.length} · ${p.l}`;
+      const tries=[];
+      for(const v of probes(p)){
+        send(nrpnMsg(p.n,v));await pause(60);
+        const cur=(await readEdit()).u;const r=findOffset(prev,cur,v,wide);prev=cur;lastCh=r.ch;tries.push({v,ch:r.ch,b:cur});
+        if(r.m){found=r.m;break}
+      }
+      // un solo byte cambiato ma con un valore spostato (es. BPM salvato come valore − 30): si ricava lo scarto dalle due prove
+      if(!found&&!wide&&tries.length===2&&tries.every(t=>t.ch.length===1)&&tries[0].ch[0]===tries[1].ch[0]){
+        const o=tries[0].ch[0],add=tries[0].b[o]-tries[0].v;
+        if(tries[1].b[o]-tries[1].v===add)found={o,w:1,add};
+      }
+      if(found){map[p.n]=found}else miss.push(`${p.l} (NRPN ${p.n}${lastCh.length?", byte cambiati "+lastCh.slice(0,6).join("/"):""})`);
+    }
+  }catch(e){log("Mappa interrotta: il synth non risponde alla richiesta dell'edit buffer. Controlla in Global: MIDI Sysex On = On e Sysex Cable = USB.")}
+  if(orig){send([...HDR,0x03,...orig.packed,0xF7]);await pause(200)}
+  S.learning=false;$("#btnLearn").disabled=false;
+  const n=Object.keys(map).length;
+  if(n){S.map=map;saveMap();applyDump(orig.u);$("#lcdInfo").textContent=`Mappa imparata: ${n} parametri · suono di partenza ripristinato`;
+    log(`Mappa imparata: ${n} parametri trovati, ${miss.length} non trovati${miss.length?": "+miss.join("; "):""}. Suono di partenza ripristinato.`);toast(`Mappa imparata: ${n} parametri`)}
+  else{$("#lcdInfo").textContent="Mappa non imparata";toast("Mappa non imparata: guarda il log del Laboratorio")}
+}
+function copyMap(){
+  if(!S.map){toast("Prima impara la mappa.");return}
+  const txt="MAPPA TAKE 5 "+JSON.stringify(S.map);
+  navigator.clipboard.writeText(txt).then(()=>toast("Mappa copiata: incollala nella chat")).catch(()=>{log(txt);toast("Mappa scritta nel log: copiala da lì")});
+}
 
 /* ============ LIBRERIA ============ */
 /* selezione con le caselle: export e scrittura usano i suoni spuntati, nell'ordine della libreria */
@@ -783,6 +862,8 @@ function init(){
   $("#btnClear").onclick=()=>{if(!S.lib.length)return;confirmBox(`Eliminare tutti i ${S.lib.length} suoni della libreria da questo browser?`,()=>{S.lib=[];S.sel.clear();saveLib();renderLib()})};
   $("#btnSelAll").onclick=()=>{S.lib.forEach(x=>S.sel.add(x));renderLib()};$("#btnSelNone").onclick=()=>{S.sel.clear();renderLib()};
   $("#btnDelSel").onclick=()=>{const n=S.sel.size;if(!n)return;confirmBox(`Eliminare i ${n} suoni selezionati dalla libreria di questo browser?`,()=>{S.lib=S.lib.filter(x=>!S.sel.has(x));S.sel.clear();saveLib();renderLib()})};
+  loadMap();$("#btnLearn").onclick=askLearn;$("#btnCopyMap").onclick=copyMap;
+  $("#btnClearMap").onclick=()=>{S.map=null;try{localStorage.removeItem(LSM)}catch(e){}updMapState();toast("Mappa azzerata")};
   $("#btnSnapA").onclick=()=>snap("snapA");$("#btnSnapB").onclick=()=>snap("snapB");$("#btnDiff").onclick=diff;
   $("#btnCopyLog").onclick=()=>{navigator.clipboard.writeText($("#log").textContent).then(()=>toast("Log copiato")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#log"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Testo selezionato: copialo a mano")})};
   if(HOST){document.body.classList.add("embedded");const off=HOST.on(bindHost);addEventListener("pagehide",()=>{off();if(S.in)S.in.removeEventListener("midimessage",onMidi)});bindHost();
